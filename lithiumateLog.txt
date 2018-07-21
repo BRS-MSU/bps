@@ -1,0 +1,15 @@
+**START**
+<!DOCTYPE HTML>
+<html lang="en-us">
+p='1';
+q='050000F40512F0';
+s='';
+x='';
+v='';
+t='';
+r='';
+l='0';
+n='00000000589c4d8c';
+w='elithion belkin,elithion belkin,HP-Print-AA-Officejet Pro 8610,SETUP,belkin.912.guests,xfinitywifi,XFINITY,Carekinesis-Guest,techapps-2.4,XFINITY';
+c='0';
+</html>{"n": "00000000589c4d8c", "q": "050000F40512F0", "p": "1", "s": "", "r": "", "t": "", "v": "", "x": ""}

@@ -1,0 +1,3064 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en-US">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Elithion smart display</title>
+
+	<!--
+	TO DO:
+		Without a USB drive, it still shows a count of log data
+		slow response for HtmlRequests
+		limit size of log on USB drive
+		Start without GUI: http://bartsimons.me/raspberry-pi-kiosk-tutorial/
+	-->
+
+	<!--
+	Iron Edison feedback:
+		Cell Temp readout - cleaner graphic
+		Is it possible to display message fault / warnings current and historical?
+	-->
+
+	<style type="text/css">
+
+
+		#mainBody {
+			margin:0;
+			background: #204040;
+			background-image: url("/static/bkgnd.png");
+			background-repeat: no-repeat;
+			font-family:FreeSans,"Arial Black", sans-serif
+		}
+
+		img.stdIcon { /* Standard size icon */
+			width:50px;
+			height:50px;
+		}
+
+		div.btnIcon { /* Button that the user can touch, with an icon inside */
+			width:49px;
+			height:49px;
+			border:2px groove gray;
+			border-radius: 7px;
+			padding:2px;
+			background:#309090;
+		}
+
+		div.radioBtn { /* Radio button that the user can touch, with text inside */
+			display:inline-block;
+			width:49px;
+			height:49px;
+			border:2px groove gray;
+			border-radius: 7px;
+			padding:2px;
+			background:#309090;
+			text-align:center;
+			font-size:0.75em;
+		}
+
+
+		span.highLiteTxt {
+			color:white;
+		}
+
+		div.inLineBtn { /* Button in a horizontal line */
+			display:inline-block;
+		}
+
+		/* Home screen */
+
+		div.paramValTxt { /* Text for SoC and current */
+			text-align:center;
+			font-size:2.5em;
+			font-weight: bold;
+		}
+
+		#socImgDiv { /* SoC image */
+			position:absolute;
+			left:40px;
+			top:30px;
+		}
+
+		#socTxtDiv { /* SoC text */
+			position:absolute;
+			left:0px;
+			top:370px;
+			width:170px;
+		}
+
+		#currtImgDiv { /* Current image */
+			position:absolute;
+			left:240px;
+			top:140px;
+		}
+
+		#currArrowImg { /* Current arrow image */
+			width:150px;
+			height:120px;
+		}
+
+
+		#currTxtDiv { /* Current text */
+			position:absolute;
+			left:0px;
+			top:120px;
+			width:180px;
+		}
+
+		#srcLoadImg { /* Source / load image */
+			position:absolute;
+			left:430px;
+			top:100px;
+			width:200px;
+			height:200px;
+		}
+
+		#alertDiv { /* Alert */
+			visibility:hidden;
+			position:absolute;
+			left:240px;
+			top:30px;
+			width:350px;
+			height:40px;
+			border:2px groove gray;
+			border-radius: 7px;
+			padding:2px;
+			background:yellow;
+			text-align:center;
+			font-size:2em;
+			font-weight: bold;
+			color:red;
+		}
+
+
+		#tmprDiv { /* Temperature image */
+			position:absolute;
+			left:640px;
+			top:30px;
+		}
+
+		#tmprTxtDiv { /* Temperature text */
+			position:absolute;
+			left:-15px;
+			top:180px;
+			width:100px;
+			text-align:center;
+			font-size:1.25em;
+			font-weight: bold;
+		}
+
+		#warnFltImg { /* Warning image */
+			position:absolute;
+			left:635px;
+			top:270px;
+			width:80px;
+			height:80px;
+		}
+
+		#mainMenuBtn {  /* Main menu button, top right */
+			position:absolute;
+			left:730px;
+			top:10px;
+		}
+
+		#hiddenMainMenuBtn {  /* Hidden main menu button, bottom right corner */
+			position:absolute;
+			left:799px;
+			top:479px;
+			width:1px;
+			height:1px;
+		}
+
+		#remoteStatusIcon {  /* Remote icon, bottom left */
+			position:absolute;
+			left:40px;
+			top:445px;
+		}
+
+		#bmsCommStatusIcon {  /* BMS communications status icon, bottom left */
+			position:absolute;
+			left:10px;
+			top:445px;
+		}
+
+		/* Overlay screens, common */
+
+		div.overLay { /* Shown on top to display more details */
+			position:absolute;
+			left:0px;
+			top:0px;
+			width:798px;
+			height:478px;
+			z-index:5;
+			visibility:hidden;
+			background-color:#306060;
+		}
+
+		img.screenIcon { /* Position of bottom left icon showing screen function */
+			position:absolute;
+			left:10px;
+			top:420px;
+			width:50px;
+			height:50px;
+		}
+
+		div.screenTitle { /* Position of bottom left text showing screen function */
+			position: absolute;
+			left:75px;
+			top:415px;
+			text-align:center;
+			font-family:Arial, Helvetica, sans-serif;
+			font-size:3em;
+			font-weight: bold;
+			color:#3CA26C;
+		}
+
+		table.listTbl { /* Table listing data in screens */
+			position: absolute;
+			left:10px;
+			top:10px;
+			width:780px;
+			font-size:2em;
+			font-weight:bold;
+			color:#40E0D0;
+
+		}
+
+		table.listTblTxt { /* Smaller text in table listing data in screens */
+
+		}
+
+		tr.listTblSubTxt { /* Subtext in table listing data in screens */
+			font-size:0.5em;
+		}
+
+		td.stngsItem {
+			font-size:0.75em;
+		}
+
+		div.auxDismissBtn { /* Position of bottom right button */
+			position:absolute;
+			left:635px;
+			top:405px;
+		}
+
+		div.mainDismissBtn { /* Position of button next to bottom right button */
+			position:absolute;
+			left:725px;
+			top:405px;
+		}
+
+		div.histogramBox { /* Box contaning a histogram of cells */
+			position:relative;
+			border-width:4px;
+			border-style:ridge;
+			border-color:gray;
+			background-color:#8FF;
+			width:765px;
+			height:200px;
+			overflow:hidden;
+		}
+
+		div.histogBar { /* Individual bar in a histogram */
+			position:absolute;
+			top:0px;
+			height:200px;
+			border:1px solid black;
+			/*background: blue;*/ /* For browsers that do not support gradients */
+			/*background: -webkit-linear-gradient(left, blue, cyan, #00C);*/ /* For Safari 5.1 to 6.0 */
+			/*background: -o-linear-gradient(right, blue, cyan, blue);*/ /* For Opera 11.1 to 12.0 */
+			/*background: -moz-linear-gradient(right, blue, cyan, blue);*/ /* For Firefox 3.6 to 15 */
+			background: linear-gradient(to right, #00F, #88F, #44F); /* Standard syntax */
+		}
+
+		/* Overlay screens, wifi */
+
+		#wiFiPasswordSpan {
+			color:white;
+		}
+
+		td.keybSpacer { /* To space the keys evenly in Raspberry Pi */
+			font-size:0.1em;
+		}
+
+
+		img.keybSpacer { /* To space the keys evenly in Raspberry Pi */
+			width:21px;
+			height:1px;
+		}
+
+		div.keyBoardKey {
+			background:black;
+			width:42px;
+			height:40px;
+			font-size:1em;
+			font-weight: bold;
+			text-align: center;
+			color:#DDD;
+			border:2px groove gray;
+			border-radius: 7px;
+			margin: 2px;
+		}
+
+		td.WifiBtns {
+			 vertical-align:top;
+			 width:380px;
+		}
+
+		div.wiFiNetBtn {
+			height:40px;
+			border:2px groove gray;
+			border-radius: 7px;
+			padding:2px;
+			margin: 2px;
+			background:#309090;
+			cursor:pointer;
+			vertical-align:middle;
+			font-size:0.75em;
+			font-weight: bold;
+			color:#40E0D0;
+			overflow:hidden;
+		}
+
+		/* Overlay screens, plot */
+
+		#plotBox { /* Box containing the plot graph */
+			position:absolute;
+			top:3px;
+			left:3px;
+			border-width:4px;
+			border-style:ridge;
+			border-color:gray;
+			background-color:#FFF;
+			width:782px;
+			height:340px;
+		}
+
+
+		#plotCanvas {
+			position:absolute;
+			top:13px;
+			left:3px;
+			/* These control the size to which the image is scaled. If not set, the value in the HTML tag is used.
+			On the contrary, the values in the HTML tag set the actual size of the canvas
+			width:750px;
+			height:300px;
+			*/
+			border:1px solid #000000;
+		}
+
+		#plotYTickMarkCanvas { /* Strip at the right edge of the plot with the Y-Axis tick marks */
+			position:absolute;
+			top:6px;
+			left:743px;
+			/* These control the size to which the image is scaled. If not set, the value in the HTML tag is used.
+			On the contrary, the values in the HTML tag set the actual size of the canvas
+			width:5px;
+			height:300px;
+			*/
+		}
+
+		div.plotUnits {
+			position:absolute;
+			left:748px;
+		}
+
+	 	#PlotParamBtnGroup {
+			position:absolute;
+			top:350px;
+			left:3px;
+		}
+
+		div.PlotParamBtn {
+			display:inline-block;
+			border: 2px outset #CCC;
+			cursor:pointer;
+			vertical-align:middle;
+			padding: 5px;
+			text-align: center;
+			width:140px;
+			font-weight: bold;
+		}
+
+	</style>
+
+</head>
+
+
+<!--// Body -->
+<body id="mainBody" ondragstart="return false;" ondrop="return false;"> <!-- disable dragging images on the touchscreen. However, these tags are new in HTML5 so will fail W3.org validation -->
+
+	<!--// Battery -->
+	<div id="socImgDiv" onclick="ShowScreenFromMainScreen('vtgScreen');">
+		<div style="position:absolute; left:0px; top:0px; width:170px; height:358px;">
+			<img alt="" src="/static/gr/soc_vert_batt_bot_ok.png" id="socBotSect" style="position:absolute; left:0px; top:45px; width:170px; height:310px;">
+			<img alt="" src="/static/gr/soc_vert_batt_top.png" style="position:absolute; left:0px; top:0px; width:170px; height:48px;">
+			<div style="position:absolute; left:0px; top:48px; width:170px; height:235px; overflow:hidden;">
+				<img alt="" src="/static/gr/soc_vert_batt_mid_ok.png" id="socMidSect" style="position:relative; left:0px; top:0px; width:170px; height:235px;">
+			</div>
+		</div>
+		<div id="socTxtDiv" class="paramValTxt"></div>
+	</div>
+
+	<!--// Current -->
+	<div id="currtImgDiv" onclick="ShowScreenFromMainScreen('battStatusScreen');">
+		<img alt="" src="/static/gr/dot.png" id="currArrowImg">
+		<div id="currTxtDiv"  class="paramValTxt"></div>
+	</div>
+
+	<!--// Source / load -->
+	<img alt="" src="/static/gr/dot.png" id="srcLoadImg">
+
+	<!--// Alert -->
+	<div id="alertDiv"></div>
+
+	<!--// Temperature -->
+	<div id="tmprDiv" onclick="ShowScreenFromMainScreen('tmprScreen');">
+		<div style="position:absolute; left:0px; top:0px;">
+			<div style="position:absolute; left:24px; top:21px;  width:21px; height:141px; overflow:hidden;">
+				<img alt="" src="/static/gr/tmpr_bar_sm.png" id="tmprBar" style="position:absolute; top:0px; width:21px; height:141px;">
+			</div>
+			<img alt="" src="/static/gr/tmpr_bgnd_sm.png" style="position:absolute; width:70px; height:178px;">
+		</div>
+		<div id="tmprTxtDiv"></div>
+	</div>
+
+	<!--// Warning / fault -->
+	<img alt="" src="/static/gr/dot.png" id="warnFltImg" onclick="ShowScreenFromMainScreen('battStatusScreen');">
+
+	<!--// Menu button, Remote and BMS comm icons -->
+	<div class="btnIcon" id="mainMenuBtn" onclick="ShowScreenFromMainScreen('menuScreen');"><img id="homeMenuIgm" alt="" src="/static/gr/menu.png" class="stdIcon"></div>
+	<div id="hiddenMainMenuBtn" onclick="ShowScreen('menuScreen');"></div>
+	<div id="remoteStatusIcon" onclick="ShowScreenFromMainScreen('displayStatusScreen');"><img alt="" src="" id="internetStatusIconImg" width=25 height=25></div>
+	<div id="bmsCommStatusIcon" onclick="ShowScreenFromMainScreen('displayStatusScreen');"><img alt="" src="/static/gr/bmscom.png" width=25 height=25></div>
+
+
+	<!--// Overlay screens -->
+
+	<!--// Menu screen -->
+	<div class="overLay" id="menuScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>
+					<table>
+						<tr onclick="ShowScreenHideMenu('vtgScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/voltmeter.png" class="stdIcon"></div>
+							<td>&nbsp;
+							<td>Battery, cell voltages
+						<tr onclick="ShowScreenHideMenu('tmprScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/thermometer.png" class="stdIcon"></div>
+							<td>
+							<td>Temperature
+						<tr onclick="ShowScreenHideMenu('resScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/ohm.png" class="stdIcon"></div>
+							<td>
+							<td>Battery resistance
+						<tr onclick="ShowScreenHideMenu('plotScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/plot.png" class="stdIcon"></div>
+							<td>
+							<td>Plot over time
+						<tr onclick="ShowScreenHideMenu('battStatusScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/battstatus.png" class="stdIcon"></div>
+							<td>
+							<td>Battery status
+						<tr onclick="ShowScreenHideMenu('displayStatusScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/displaystatus.png" class="stdIcon"></div>
+							<td>
+							<td>Display status
+					</table>
+				<td>&nbsp;&nbsp;
+				<td>
+					<table>
+						<tr onclick="ShowScreenHideMenu('settingsScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/settings.png" class="stdIcon"></div>
+							<td>&nbsp;
+							<td>Settings
+						<tr onclick="OpenWiFiNetworkScreen();">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/wifi.png" class="stdIcon"></div>
+							<td>
+							<td>WiFi setup
+						<tr onclick="ShowScreenHideMenu('logScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/log.png" class="stdIcon"></div>
+							<td>
+							<td>Log data
+						<tr onclick="ShowScreenHideMenu('remoteScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/remote.png" class="stdIcon"></div>
+							<td>
+							<td>Remote monitor
+						<tr onclick="ShowScreenHideMenu('infoScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/info.png" class="stdIcon"></div>
+							<td>
+							<td>Info
+						<tr onclick="ShowScreenHideMenu('helpScreen');">
+							<td><div class="btnIcon"><img alt="" src="/static/gr/help.png" class="stdIcon"></div>
+							<td>
+							<td>Help
+					</table>
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<img alt="" src="/static/gr/menu.png" class="screenIcon stdIcon">
+		<div class="screenTitle">Menu</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);"><img alt="" src="/static/gr/home.png" class="stdIcon"></div>
+	</div>
+
+
+	<!--// Voltage screen -->
+	<div class="overLay" id="vtgScreen">
+
+		<!--// List -->
+		<table class="listTbl">
+			<tr>
+				<td>Battery:
+				<td id="battVtgSpan">-
+			<tr>
+				<td>Cells:
+				<td id="cellVtgSpan">-
+			<tr>
+				<td colspan=2><div class="histogramBox" id="vtgHistogramDiv"></div>
+			<tr>
+				<td colspan=2>Cell <span id="selCellVtgSpan">-</span> (touch cell)
+			<tr>
+				<td colspan=2>Limits: min: <span id="minCellVtgSpan">-</span> low: <span id="lowCellVtgSpan">-</span> hi: <span id="highCellVtgSpan">-</span>; max: <span id="maxCellVtgSpan">-</span> V
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<img alt="" src="/static/gr/voltmeter.png" class="screenIcon">
+		<div class="screenTitle">Voltage</div>
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+
+	<!--// Temperature screen -->
+	<div class="overLay" id="tmprScreen">
+
+		<!--// List -->
+		<table class="listTbl">
+			<tr>
+				<td>Battery:
+				<td><span id="battTmprSpan">-</span> &deg;C
+			<tr>
+				<td>Cells:
+				<td><span id="cellTmprSpan">-</span> &deg;C
+			<tr>
+				<td colspan=2><div class="histogramBox" id="tmprHistogramDiv"></div>
+			<tr>
+				<td colspan=2>Cell <span id="selCellTmprSpan">-</span> (touch cell)
+			<tr>
+				<td colspan=2>Limits: min: <span id="minTmprSpan">-</span>; low: <span id="lowTmprSpan">-</span>; high: <span id="highTmprSpan">-</span>; max: <span id="maxTmprSpan">-</span> &deg;C
+		</table>
+
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Temperature</div>
+		<img alt="" src="/static/gr/thermometer.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+
+	<!--// Resistance screen -->
+	<div class="overLay" id="resScreen">
+
+		<!--// List -->
+		<table class="listTbl">
+			<tr>
+				<td>Battery:
+				<td><span id="battResDiv">-</span> m&Omega;
+			<tr>
+				<td>Cells:
+				<td><span id="cellResDiv">-</span> m&Omega;
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Resistance</div>
+		<img alt="" src="/static/gr/ohm.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+	<!--// Plot screen -->
+	<div class="overLay" id="plotScreen">
+
+		<!--// Plot -->
+		<div id="plotBox">
+ 			<canvas id="plotCanvas" width=740 height=319></canvas> <!-- This tag is new in HTML5 so will fail W3.org validation -->
+			<canvas id="plotYTickMarkCanvas" width=5 height=335></canvas>
+			<div class="plotUnits" id="plotUnit10">100</div>
+			<div class="plotUnits" id="plotUnit9">90</div>
+			<div class="plotUnits" id="plotUnit8">80</div>
+			<div class="plotUnits" id="plotUnit7">70</div>
+			<div class="plotUnits" id="plotUnit6">60</div>
+			<div class="plotUnits" id="plotUnit5">50</div>
+			<div class="plotUnits" id="plotUnit4">40</div>
+			<div class="plotUnits" id="plotUnit3">30</div>
+			<div class="plotUnits" id="plotUnit2">20</div>
+			<div class="plotUnits" id="plotUnit1">10</div>
+			<div class="plotUnits" id="plotUnit0">0</div>
+	 	</div>
+
+		<!--// Buttons -->
+		<div id="PlotParamBtnGroup">
+			<table cellpadding=2 cellspacing=0>
+				<tr>
+					<td><div class="PlotParamBtn" onClick="UpdPlotYAxisLabels(PlotParamEnum.BattCurr);" id="plotParamBtn0">Current [A]</div>
+					<td><div class="PlotParamBtn" onClick="UpdPlotYAxisLabels(PlotParamEnum.BattVtg);" id="plotParamBtn1">Batt vtg. [V]</div>
+					<td><div class="PlotParamBtn" onClick="UpdPlotYAxisLabels(PlotParamEnum.CellVtg);" id="plotParamBtn2">Cell vtgs. [V]</div>
+					<td><div class="PlotParamBtn" onClick="UpdPlotYAxisLabels(PlotParamEnum.CellTmpr);" id="plotParamBtn3">Temper. [&deg;C]</div>
+					<td><div class="PlotParamBtn" onClick="UpdPlotYAxisLabels(PlotParamEnum.SocLevel);" id="plotParamBtn4">SoC [%]</div>
+			</table>
+		</div>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Plot</div>
+		<img alt="" src="/static/gr/plot.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+	<!--// Battery status screen -->
+	<div class="overLay" id="battStatusScreen">
+
+		<!--// Status -->
+		<table class="listTbl" style="font-size:1.75em;">
+			<tr>
+				<td>Power cycle #:
+				<td id="powerCycleNoDiv">_
+				<td>
+				<td>Pwr-up time:
+				<td><span id="pwrUpTimerDiv">_</span> s
+			<tr>
+				<td>Status:
+				<td id="bmsStatusSpan">-
+				<td>&nbsp;&nbsp;
+				<td>Power:
+				<td id="powerSpan">-
+			<tr class="listTblSubTxt">
+				<td colspan=5 id="warnFltDiv">_
+			<tr>
+				<td>Current:
+				<td><span id="currentDiv">_</span> A
+				<td>
+				<td>SoC:
+				<td><span id="socDiv">_</span> %
+			<tr>
+				<td>Charge:
+				<td id="chargeOkDiv">_
+				<td>
+				<td>Discharge:
+				<td id="dischargeOkDiv">_
+			<tr>
+				<td>Charge limit:
+				<td><span id="cclDiv">_</span> %
+				<td>
+				<td>Disch. limit:
+				<td><span id="dclDiv">_</span> %
+			<tr class="listTblSubTxt">
+				<td colspan=2 id="cclCauseDiv">_
+				<td>
+				<td colspan=2 id="dclCauseDiv">_
+			<tr>
+				<td>Balancing:
+				<td id="balanceDiv">_
+			<tr class="listTblSubTxt">
+				<td colspan=5 id="balDetailsDiv">_
+			<tr>
+				<td>Banks:
+				<td id="banksStatusDiv">_
+				<td>
+				<td>Cells:
+				<td id="cellsStatusDiv">_
+			<tr class="listTblSubTxt">
+				<td colspan=2 id="banksDetailsDiv">_
+				<td>
+				<td colspan=2 id="cellsDetailsDiv">_
+
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Battery status</div>
+		<img alt="" src="/static/gr/battstatus.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+	<!--// Display status screen -->
+	<div class="overLay" id="displayStatusScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td colspan=2>BMS: <span id="bmsCommStatusSpan">-</span>
+			<tr>
+				<td colspan=2>Internet: <span id="internetStatusSpan">-</span>
+			<tr>
+				<td>Reboot display:
+					<div class="btnIcon inLineBtn" onclick="ReqReboot();">
+						<img alt="" src="/static/gr/reboot.png" class="stdIcon">
+					</div>
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Display status</div>
+		<img alt="" src="/static/gr/displaystatus.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+
+
+	<!--// Settings screen -->
+	<div class="overLay" id="settingsScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td colspan=2>
+					Plot batt vtg.
+				<td colspan=7>
+					<div class="radioBtn" id="plotBattVtgDiv0" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">10</div>
+					<div class="radioBtn" id="plotBattVtgDiv1" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">20</div>
+					<div class="radioBtn" id="plotBattVtgDiv2" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">50</div>
+					<div class="radioBtn" id="plotBattVtgDiv3" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">100</div>
+					<div class="radioBtn" id="plotBattVtgDiv4" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">200</div>
+					<div class="radioBtn" id="plotBattVtgDiv5" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">500</div>
+					<div class="radioBtn" id="plotBattVtgDiv6" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">1k</div>
+				<td>
+					V
+			<tr>
+				<td colspan=2>
+					Plot batt curr.
+				<td colspan=7>
+					<div class="radioBtn" id="plotBattCurrDiv0" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">10</div>
+					<div class="radioBtn" id="plotBattCurrDiv1" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">20</div>
+					<div class="radioBtn" id="plotBattCurrDiv2" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">50</div>
+					<div class="radioBtn" id="plotBattCurrDiv3" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">100</div>
+					<div class="radioBtn" id="plotBattCurrDiv4" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">200</div>
+					<div class="radioBtn" id="plotBattCurrDiv5" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">500</div>
+					<div class="radioBtn" id="plotBattCurrDiv6" onclick="CheckRadioBtn(this); PlotRangeBtnClick(this);">1k</div>
+				<td>
+					A
+			<tr>
+				<td colspan=10 class="stngsItem">&nbsp;
+			<tr>
+				<td rowspan=2>Low SoC
+				<td class="stngsItem">Warn.:
+				<td>
+					<div class="btnIcon" onclick="ChangeVal('warnSoc',0, 0);">
+						<img alt="" src="/static/gr/minus_btn.png" class="stdIcon">
+					</div>
+				<td id="warnSocDiv">-
+				<td>
+					<div class="btnIcon" onclick="ChangeVal('warnSoc',1, 100);">
+						<img alt="" src="/static/gr/plus_btn.png" class="stdIcon">
+					</div>
+				<td>&nbsp;&nbsp;
+				<td>Demo
+				<td>
+					<div class="btnIcon" onclick="ToggleChkBox('demoMode')">
+						<img alt="" src="/static/gr/dot.png" id="demoModeImg" class="stdIcon">
+					</div>
+			<tr>
+				<td class="stngsItem">Fault:
+				<td>
+					<div class="btnIcon" onclick="ChangeVal('fltSoc',0, 0);">
+						<img alt="" src="/static/gr/minus_btn.png" class="stdIcon">
+					</div>
+				<td id="fltSocDiv">-
+				<td>
+					<div class="btnIcon" onclick="ChangeVal('fltSoc',1, 100);">
+						<img alt="" src="/static/gr/plus_btn.png" class="stdIcon">
+					</div>
+				<td>
+				<td>Temper. &deg;F:
+				<td>
+					<div class="btnIcon" onclick="ToggleChkBox('fahrenheitUnits')">
+						<img alt="" src="/static/gr/dot.png" id="fahrenheitUnitsImg" class="stdIcon">
+					</div>
+			<tr>
+				<td colspan=2 id="MenusSettingCell1">Menus, overlays
+				<td id="MenusSettingCell2">
+					<div class="btnIcon" onclick="ToggleRemoveOverlays()">
+						<img alt="" src="/static/gr/dot.png" id="showOverlaysImg" class="stdIcon">
+					</div>
+				<td colspan=3>
+				<td>Cursor
+				<td>
+					<div class="btnIcon" onclick="ToggleChkBox('showCursor')">
+						<img alt="" src="/static/gr/dot.png" id="showCursorImg" class="stdIcon">
+					</div>
+		</table>
+
+
+		<!--// Title, icon, dismiss button(s) -->
+		<img alt="" src="/static/gr/settings.png" class="screenIcon">
+		<div class="screenTitle">Settings</div>
+		<div class="btnIcon auxDismissBtn" onclick="SaveSettings(); ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+			<div class="btnIcon mainDismissBtn" onclick="SaveSettings(); HideScreen(this);">
+		<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+
+	</div>
+
+	<!--// WiFi Network screen -->
+	<div class="overLay" id="wifiNetScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>Network:
+				<td><div class="wiFiNetBtn" id="noWiFiNetworkBtn" onclick="SelWiFiNetwork('')">Disconnect</div>
+			<tr>
+				<td class="WifiBtns"><div id="wiFiNetBtnsDivL"></div>
+				<td class="WifiBtns"><div id="wiFiNetBtnsDivR"></div>
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<img alt="" src="/static/gr/wifi.png" class="screenIcon" id="wifiNetScreenIcon">
+		<div class="screenTitle">Wifi setup</div>
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this); ShowScreenHideMenu('remoteScreen');">
+			<img alt="" src="/static/gr/info.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);"><img alt="" src="/static/gr/home.png" class="stdIcon"></div>
+	</div>
+
+	<!--// WiFi Password screen -->
+	<div class="overLay" id="wifiPassScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>
+					Password: <span id="wiFiPasswordSpan"></span>
+			<tr>
+				<td>
+					<table cellpadding=0 cellspacing=0 id="lowerCaseKeyboard">
+						<!-- Without this, the Raspberry Pi browser expands the cells horizontally needlessly -->
+						<tr>
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+						<tr>
+							<td colspan=2><div class="keyBoardKey">`</div>
+							<td colspan=2><div class="keyBoardKey">1</div>
+							<td colspan=2><div class="keyBoardKey">2</div>
+							<td colspan=2><div class="keyBoardKey">3</div>
+							<td colspan=2><div class="keyBoardKey">4</div>
+							<td colspan=2><div class="keyBoardKey">5</div>
+							<td colspan=2><div class="keyBoardKey">6</div>
+							<td colspan=2><div class="keyBoardKey">7</div>
+							<td colspan=2><div class="keyBoardKey">8</div>
+							<td colspan=2><div class="keyBoardKey">9</div>
+							<td colspan=2><div class="keyBoardKey">0</div>
+							<td colspan=2><div class="keyBoardKey">-</div>
+							<td colspan=2><div class="keyBoardKey">=</div>
+							<td colspan=2><div class="keyBoardKey" style="background:#309090;" onclick="WiFiKeyBdBackSpc()">&larr;</div>
+						<tr>
+							<td>
+							<td colspan=2><div class="keyBoardKey">q</div>
+							<td colspan=2><div class="keyBoardKey">w</div>
+							<td colspan=2><div class="keyBoardKey">e</div>
+							<td colspan=2><div class="keyBoardKey">r</div>
+							<td colspan=2><div class="keyBoardKey">t</div>
+							<td colspan=2><div class="keyBoardKey">y</div>
+							<td colspan=2><div class="keyBoardKey">u</div>
+							<td colspan=2><div class="keyBoardKey">i</div>
+							<td colspan=2><div class="keyBoardKey">o</div>
+							<td colspan=2><div class="keyBoardKey">p</div>
+							<td colspan=2><div class="keyBoardKey">[</div>
+							<td colspan=2><div class="keyBoardKey">]</div>
+							<td colspan=2><div class="keyBoardKey">\</div>
+							<td>
+						<tr>
+							<td colspan=2>
+							<td colspan=2><div class="keyBoardKey">a</div>
+							<td colspan=2><div class="keyBoardKey">s</div>
+							<td colspan=2><div class="keyBoardKey">d</div>
+							<td colspan=2><div class="keyBoardKey">f</div>
+							<td colspan=2><div class="keyBoardKey">g</div>
+							<td colspan=2><div class="keyBoardKey">h</div>
+							<td colspan=2><div class="keyBoardKey">j</div>
+							<td colspan=2><div class="keyBoardKey">k</div>
+							<td colspan=2><div class="keyBoardKey">l</div>
+							<td colspan=2><div class="keyBoardKey">;</div>
+							<td colspan=2><div class="keyBoardKey">'</div>
+							<td colspan=4>
+						<tr>
+							<td colspan=3><div class="keyBoardKey" style="width:65px; background:#309090;" onclick="WiFiKeyBdShift()">&uArr;</div>
+							<td colspan=2><div class="keyBoardKey">z</div>
+							<td colspan=2><div class="keyBoardKey">x</div>
+							<td colspan=2><div class="keyBoardKey">c</div>
+							<td colspan=2><div class="keyBoardKey">v</div>
+							<td colspan=2><div class="keyBoardKey">b</div>
+							<td colspan=2><div class="keyBoardKey">n</div>
+							<td colspan=2><div class="keyBoardKey">m</div>
+							<td colspan=2><div class="keyBoardKey">,</div>
+							<td colspan=2><div class="keyBoardKey">.</div>
+							<td colspan=2><div class="keyBoardKey">/</div>
+							<td colspan=6><div class="keyBoardKey" style="width:115px;line-height:30px;">&#9251;</div>
+					</table>
+
+					<table cellpadding=0 cellspacing=0 id="upperCaseKeyboard" style="display:none;">
+						<tr>
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+							<td class="keybSpacer"><img alt="" src="/static/gr/dot.png" class="keybSpacer">
+						<tr>
+							<td colspan=2><div class="keyBoardKey">~</div>
+							<td colspan=2><div class="keyBoardKey">!</div>
+							<td colspan=2><div class="keyBoardKey">@</div>
+							<td colspan=2><div class="keyBoardKey">#</div>
+							<td colspan=2><div class="keyBoardKey">$</div>
+							<td colspan=2><div class="keyBoardKey">%</div>
+							<td colspan=2><div class="keyBoardKey">^</div>
+							<td colspan=2><div class="keyBoardKey">&</div>
+							<td colspan=2><div class="keyBoardKey">*</div>
+							<td colspan=2><div class="keyBoardKey">(</div>
+							<td colspan=2><div class="keyBoardKey">)</div>
+							<td colspan=2><div class="keyBoardKey">_</div>
+							<td colspan=2><div class="keyBoardKey">+</div>
+							<td colspan=2><div class="keyBoardKey" style="background:#309090;" onclick="WiFiKeyBdBackSpc()">&larr;</div>
+						<tr>
+							<td>
+							<td colspan=2><div class="keyBoardKey">Q</div>
+							<td colspan=2><div class="keyBoardKey">W</div>
+							<td colspan=2><div class="keyBoardKey">E</div>
+							<td colspan=2><div class="keyBoardKey">R</div>
+							<td colspan=2><div class="keyBoardKey">T</div>
+							<td colspan=2><div class="keyBoardKey">Y</div>
+							<td colspan=2><div class="keyBoardKey">U</div>
+							<td colspan=2><div class="keyBoardKey">I</div>
+							<td colspan=2><div class="keyBoardKey">O</div>
+							<td colspan=2><div class="keyBoardKey">P</div>
+							<td colspan=2><div class="keyBoardKey">{</div>
+							<td colspan=2><div class="keyBoardKey">}</div>
+							<td colspan=2><div class="keyBoardKey">|</div>
+							<td>
+						<tr>
+							<td colspan=2>
+							<td colspan=2><div class="keyBoardKey">A</div>
+							<td colspan=2><div class="keyBoardKey">S</div>
+							<td colspan=2><div class="keyBoardKey">D</div>
+							<td colspan=2><div class="keyBoardKey">F</div>
+							<td colspan=2><div class="keyBoardKey">G</div>
+							<td colspan=2><div class="keyBoardKey">H</div>
+							<td colspan=2><div class="keyBoardKey">J</div>
+							<td colspan=2><div class="keyBoardKey">K</div>
+							<td colspan=2><div class="keyBoardKey">L</div>
+							<td colspan=2><div class="keyBoardKey">:</div>
+							<td colspan=2><div class="keyBoardKey">"</div><!--"-->
+							<td colspan=4>
+						<tr>
+							<td colspan=3><div class="keyBoardKey" style="width:65px;background:gray;" onclick="WiFiKeyBdShift()">&uArr;</div>
+							<td colspan=2><div class="keyBoardKey">Z</div>
+							<td colspan=2><div class="keyBoardKey">X</div>
+							<td colspan=2><div class="keyBoardKey">C</div>
+							<td colspan=2><div class="keyBoardKey">V</div>
+							<td colspan=2><div class="keyBoardKey">B</div>
+							<td colspan=2><div class="keyBoardKey">N</div>
+							<td colspan=2><div class="keyBoardKey">M</div>
+							<td colspan=2><div class="keyBoardKey">&lt;</div>
+							<td colspan=2><div class="keyBoardKey">&gt;</div>
+							<td colspan=2><div class="keyBoardKey">?</div>
+							<td colspan=6><div class="keyBoardKey" style="width:115px;line-height:30px;">&#9251;</div>
+				</table>
+			</table>
+
+			<!--// Title, icon, dismiss button(s) -->
+			<img alt="" src="/static/gr/wifi.png" class="screenIcon">
+			<div class="screenTitle">Wifi setup</div>
+			<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+				<img alt="" src="/static/gr/cancel_btn.png" class="stdIcon">
+			</div>
+			<div class="btnIcon mainDismissBtn" onclick="ReqWifiConfig();">
+				<img alt="" src="/static/gr/ok_btn.png" class="stdIcon">
+			</div>
+	</div>
+
+
+	<!--// Log data screen -->
+	<div class="overLay" id="logScreen">
+
+		<!--// List -->
+		<table class="listTbl">
+			<tr>
+				<td colspan=3>
+					Data are logged in lithiumatelog_xxx.csv on a USB drive plugged into the display
+			<tr>
+				<td colspan=3>&nbsp;
+			<tr>
+				<td>
+					Rate:
+				<td colspan=2>
+					<div class="radioBtn" id="logDataRateDiv0" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">1 s</div>
+					<div class="radioBtn" id="logDataRateDiv1" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">2 s</div>
+					<div class="radioBtn" id="logDataRateDiv2" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">5 s</div>
+					<div class="radioBtn" id="logDataRateDiv3" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">10 s</div>
+					<div class="radioBtn" id="logDataRateDiv4" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">30 s</div>
+					<div class="radioBtn" id="logDataRateDiv5" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">1 m</div>
+					<div class="radioBtn" id="logDataRateDiv6" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">2 m</div>
+					<div class="radioBtn" id="logDataRateDiv7" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">5 m</div>
+					<div class="radioBtn" id="logDataRateDiv8" onclick="CheckRadioBtn(this); LogRateBtnClick(this);">10m</div>
+			<tr>
+				<td colspan=3>&nbsp;
+			<tr>
+				<td>
+					Control:
+				<td>
+					<div class="btnIcon radioBtn" id="logDataDiv0" onclick="CheckRadioBtn(this); DataLogRecordBtnClick();"><img alt="" src="/static/gr/record.png" class="stdIcon"></div>
+					<div class="btnIcon radioBtn" id="logDataDiv1" onclick="CheckRadioBtn(this); DataLogPauseBtnClick();"><img alt="" src="/static/gr/pause.png" class="stdIcon"></div>
+					<div class="btnIcon radioBtn" id="logDataDiv2" onclick="CheckRadioBtn(this); DataLogStopBtnClick();"><img alt="" src="/static/gr/stop.png" class="stdIcon"></div>
+					<div class="btnIcon radioBtn" id="logDataDiv2" onclick="CheckRadioBtn(this); DataLogEjectBtnClick();"><img alt="" src="/static/gr/eject.png" class="stdIcon"></div>
+				<td id="logPointDiv">
+					Stopped
+			<tr>
+				<td colspan=3>&nbsp;
+			<tr>
+				<td colspan=3>Click "Eject" before removing USB stick
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Log data</div>
+		<img alt="" src="/static/gr/log.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+
+	<!--// Remote monitor data screen -->
+	<div class="overLay" id="remoteScreen">
+
+		<!--// List -->
+		<table class="listTbl">
+			<tr>
+				<td>To monitor this display remotely:
+			<tr>
+				<td>
+					1) Connect this display to the Internet (either through a WiFi network or a cable)
+			<tr>
+				<td>
+					2) Enable remote access:
+					<div class="btnIcon inLineBtn" onclick="ToggleChkBox('remoteEnab'); SaveStng('remoteEnab');">
+						<img alt="" src="/static/gr/dot.png" id="remoteEnabImg" class="stdIcon">
+					</div>
+			<tr>
+				<td>
+					3) On remote computer, go to <span class="highLiteTxt">elithion.com/rm</span>
+			<tr>
+				<td>
+					4) Enter the serial number of this display: <span class="highLiteTxt" id="displayHdwrSNSpan">-</span>
+			<tr class="listTblSubTxt">
+				<td>
+					Privacy notice: Whenever this display is connected to the Internet, data shown on this display can be accessed remotely by anyone who has its serial number.
+			<tr class="listTblSubTxt">
+				<td>
+					Safety notice: it is impossible to control the battery directly or remotely through this display.
+
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Remote monitor</div>
+		<img alt="" src="/static/gr/remote.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+
+	<!--// Info screen -->
+	<div class="overLay" id="infoScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>Lithiumate touchscreen display
+			<tr>
+				<td>Display:
+					HDWR S/N <span id="dsplSN_Span">-</span>
+					SFWR rev: <span id="dsplRevSpan">-</span>
+			<tr>
+				<td>BMS:
+					HDWR rev<span id="hdwrRevDiv">_</span>,
+					S/N: <span id="hdwrSerNoDiv">_</span>;
+					SFWR rev: <span id="sfwrRevDiv">_</span>
+			<tr>
+				<td>CopyRight Elithion 2017
+			<tr>
+				<td>Davide Andrea, 2017/10/04
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Info</div>
+		<img alt="" src="/static/gr/info.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+	<!--// Help screen -->
+	<div class="overLay" id="helpScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>Tech support: <a href="http://elithion.com/support.php">elithion.com</a>
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Help</div>
+		<img alt="" src="/static/gr/help.png" class="screenIcon">
+		<div class="btnIcon auxDismissBtn" onclick="ShowMenuHideScreen(this);">
+			<img alt="" src="/static/gr/menu.png" class="stdIcon">
+		</div>
+		<div class="btnIcon mainDismissBtn" onclick="HideScreen(this);">
+			<img alt="" src="/static/gr/home.png" class="stdIcon">
+		</div>
+	</div>
+
+	<!--// Reboot screen -->
+	<div class="overLay" id="rebootScreen">
+
+		<table class="listTbl">
+			<tr>
+				<td>The display will now shut down and restart
+		</table>
+
+		<!--// Title, icon, dismiss button(s) -->
+		<div class="screenTitle">Reboot</div>
+	</div>
+
+
+
+<script type="text/javascript">
+
+	// Constants
+	var RevLevel = '1.00'
+	var PctUnitsStr = '%';
+	var CelsiusUnitsStr = '&deg;C';
+	var FahrenUnitsStr = '&deg;F';
+	var CurrThresh = 7; // Below this current it's assumed no current
+
+	// Plot
+	var PlotUnitsVertSpacing = 32;
+	var PlotNoOfUnits = 10;
+	// Ranges for the Y-Axis
+	var TopCurrDflt = 100;
+	var BotCurrDflt = -100;
+	var TopBattVtgDflt = 100;
+	var BotBattVtgDflt = 0;
+	var TopCellVtg = 4.5;
+	var BotCellVtg = 2.0;
+	var TopTemper = 70;
+	var BotTemper = -30;
+	var TopSoC = 100;
+	var BotSoC = 0;
+	var PlotNoOfParams = 5;
+	var PlotParamEnum = {BattCurr:0, BattVtg:1, CellVtg:2, CellTmpr:3, SocLevel:4};
+	var plotYAxisTopVals = [TopCurrDflt, TopBattVtgDflt, TopCellVtg, TopTemper, TopSoC];
+	var plotYAxisBotVals = [BotCurrDflt, BotBattVtgDflt, BotCellVtg, BotTemper, BotSoC];
+	// Color sets
+	var CurrentColor = [255,0,0]; // Current - red
+	var PackVtgColor = [0,128,0]; // Pack Voltage - green
+	var CellVtgsColor = [0,224,0]; // Cell voltages - lime
+	var TemperColor = [255,165,0]; // Temperatures - orange
+	var SOC_Color = [238,130,238]; // SOC - violet
+	var PlotTraceColorSets = [CurrentColor, PackVtgColor, CellVtgsColor, TemperColor, SOC_Color];
+	
+	// Data log
+	var DataLogRecordCode = 'R';
+	var DataLogPauseCode = 'P';
+	var DataLogStopCode = 'S';
+
+	// Radio button colors
+	var RadioBtnColorOn = 'white';
+	var RadioBtnColorOff = '#309090';
+
+	// Number of buttons
+	var NoOfPlotRngBtns = 7; // Plot ranges
+	var NoOfNetworkBtns = 5; // wifi
+	var NoOfDataLogBtns = 3; // Data logging
+	var NoOfDataLogRateBtns = 9; // Data logging rate
+	
+
+	// AJAX
+	var ContentKey = 'Content-type';
+	var ContentVal = 'application/x-www-form-urlencoded';
+
+	// Data extraction:
+	// - location (hex) Lite
+	// - location (hex) Pro
+	// - number of bytes
+	// - conversion factor
+	// - offset
+	// Constants
+
+	var HdwrRev          = ['00', '00', 1,   1, 0]; // Hardware revision level
+	var SfwrRev          = ['01', '01', 2,   1, 0]; // Software revision level
+	var SerialNo         = ['03', '03', 2,   1, 0]; // Serial number
+	// Variables, Lite and Pro
+	var PowerCycleNo2    = ['01', '01', 2,   1, 0]; // Number of on/off cycles [-]
+	var PwrUpTimer3      = ['03', '03', 3,   1, 0]; // Time since power came on [s]
+	var IoState          = ['0A', '0A', 1,   1, 0]; // State of certain inputs and outputs
+	var RelCCL           = ['0B', '0B', 1,   0.392157, 0]; // Relative Charge Current Limit (CCL): Maximum regen and charging current accepted. FFh = 100%, 00h = 0% [-]
+	var RelDCL           = ['0C', '0C', 1,   0.392157, 0]; // Relative Discharge Current Limit (DCL): Maximum discharging current accepted. FFh = 100%, 00h = 0% [-]
+	var StateOfCharge    = ['0E', '0E', 1, 0.5, 0]; // State Of Charge [0.5%]
+	var PackVoltage2     = ['0F', '0F', 2, 0.1, 0]; // Pack total voltage, 0 to 6.55 kV [100 mV]
+	var MissBanksCode    = ['11', '11', 1,   1, 0]; // No of a bank missing (high nybble) / No of missing banks (low nybble)
+	var NoOfMissCells    = ['12', '12', 1,   1, 0]; // No of missing cells
+	var MissCellNo       = ['13', '13', 1,   1, 0]; // No of a missing cell
+	var MinCellVtg       = ['14', '14', 1,0.01, 2]; // Minimum Cell Block Voltage [V]
+	var MinVtgCellNo     = ['15', '15', 1,   1, 0]; // Number of the Cell with the lowest Voltage [-]
+	var AvgCellVtg       = ['16', '16', 1,0.01, 2]; // Average Cell Block Voltage [V]
+	var MaxCellVtg       = ['17', '17', 1,0.01, 2]; // Maximum Cell Block Voltage [V]
+	var MaxVtgCellNo     = ['18', '18', 1,   1, 0]; // Number of the Cell with the highest Voltage [-]
+	var MinCellTmp       = ['19', '19', 1,   1, -128]; // Minimum Cell Temperature [C]
+	var MinTmpCellNo     = ['1A', '1A', 1,   1, 0]; // Number of the Cell with the lowest Temperature [-]
+	var AvgCellTmp       = ['1B', '1B', 1,   1, -128]; // Average Cell Temperature [C]
+	var MaxCellTmp       = ['1C', '1C', 1,   1, -128]; // Maximum Cell Temperature [C]
+	var MaxTmpCellNo     = ['1D', '1D', 1,   1, 0]; // Number of the Cell with the highest Temperature [-]
+	var NoOfLoadsOn      = ['1E', '1E', 1,   1, 0]; // Number of loads that are on
+	var LoadOnVtg        = ['1F', '1F', 1,0.01, 2]; // Cell voltage above which we turn on its load [10 mV - 2.0 V]
+	var CclLimitCause    = ['24', '39', 1,   1, 0]; // Code for what is limiting the CCL
+	var DclLimitCause    = ['25', '3A', 1,   1, 0]; // Code for what is limiting the DCL
+	var BalDisabCause    = ['26', '3B', 1,   1, 0]; // Code for what is turning off balance
+	var NoOfSeriesCells  = ['27', '4D', 1,   1, 0]; // Number of cells in series
+	var MinCellRes       = ['38', '32', 1, 0.1, 0]; // Minimum Cell Block Resistance [100 uOhm]
+	var AvgCellRes       = ['39', '33', 1, 0.1, 0]; // Average Cell Block Resistance [100 uOhm]
+	var MaxCellRes       = ['3A', '34', 1, 0.1, 0]; // Maximum Cell Block Resistance [100 uOhm]
+	var MinResCellNo     = ['3B', '35', 1,   1, 0]; // Number of the Module with the lowest Resistance [-]
+	var MaxResCellNo     = ['3C', '36', 1,   1, 0]; // Number of the Module with the highest Resistance [-]
+	var PackResistance2  = ['3D', '37', 2, 0.1, 0]; // Total pack resistance [100 uOhm]
+	var PackCurrent      = ['3F', '28', 2, 0.1, 0]; // Total Pack current (system plus charge) [100 mA], positive when discharging +/- 3.2 KA max
+	// Variables, Pro only
+	var ExtFlags         = ['  ', '20', 1, 1, 0]; // Externally available flags
+	var OutFlags         = ['  ', '21', 1, 1, 0]; // Flags that control the outputs
+	var LvlFaultFlags    = ['  ', '22', 1, 1, 0]; // Fault flags for level faults (as opposed do transition faults). These get cleared if the fault is over (as opposed to the faultCode, which is never cleared)
+	var WarningFlags     = ['  ', '23', 1, 1, 0]; // Warning flags
+	var AvgMinCellVtg2   = ['  ', '24', 2, .001, 2]; // Time average of the IR compensated Minimum Cell Voltage. High byte: MSB:[10 mV - 2.0 V]
+	var AvgMaxCellVtg2   = ['  ', '26', 2, .001, 2]; // Time average of the IR compensated Maximum Cell Voltage. High byte: MSB:[10 mV - 2.0 V]
+	var InstSrcCurr2     = ['  ', '2A', 2, 1, 0]; // Instantaneous Source current [100 mA], positive when discharging
+	var InstLodCurr2     = ['  ', '2C', 2, 1, 0]; // Instantaneous Load current [100 mA], positive when discharging
+	var AvgMinCellTmp2   = ['  ', '2E', 2, 1, 0]; // Time average of the Minimum Cell Board Temperature. High byte:  [C +80h]
+	var AvgMaxCellTmp2   = ['  ', '30', 2, 1, 0]; // Time average of the Maximum Cell Board Temperature. High byte:  [C +80h]
+	var InstPower2       = ['  ', '3C', 2, 1, 0]; // Instantaneous Power [100 W], positive when discharging, 3.2 MW max
+	var TotEnergyIn5     = ['  ', '3E', 5, 1, 0]; // Total energy in [kWh/10000h]
+	var TotEnergyOut5    = ['  ', '43', 5, 1, 0]; // Total energy out [kWh/10000h]
+	var DepthOfDisch5    = ['  ', '48', 2, 1, 0]; // Depth Of Discharge: integral of pack current. Two high bytes: [Ah]. 0 to 65 kAh
+	var StateOfHealth    = ['  ', '4E', 1, 1, 0]; // State Of Health [%]
+	var BankStatus0      = ['  ', '4F', 1, 1, 0]; // Bank 0 - Status Array: number of cell in the bank (when learning); number of missing cells (during normal operation); cleared if OK, -1 if no communications
+	var BankStatus1      = ['  ', '50', 1, 1, 0]; // Bank 1
+	var BankStatus2      = ['  ', '51', 1, 1, 0]; // Bank 2
+	var BankStatus3      = ['  ', '52', 1, 1, 0]; // Bank 3
+	var BankStatus4      = ['  ', '53', 1, 1, 0]; // Bank 4
+	var BankStatus5      = ['  ', '54', 1, 1, 0]; // Bank 5
+	var BankStatus6      = ['  ', '55', 1, 1, 0]; // Bank 6
+	var BankStatus7      = ['  ', '56', 1, 1, 0]; // Bank 7
+	var BankStatus8      = ['  ', '57', 1, 1, 0]; // Bank 8
+	var BankStatus9      = ['  ', '58', 1, 1, 0]; // Bank 9
+	var BankStatusA      = ['  ', '59', 1, 1, 0]; // Bank A
+	var BankStatusB      = ['  ', '5A', 1, 1, 0]; // Bank B
+	var BankStatusC      = ['  ', '5B', 1, 1, 0]; // Bank C
+	var BankStatusD      = ['  ', '5C', 1, 1, 0]; // Bank D
+	var BankStatusE      = ['  ', '5D', 1, 1, 0]; // Bank E
+	var BankStatusF      = ['  ', '5E', 1, 1, 0]; // Bank F
+	var CanContReqTmr    = ['  ', '5F', 1, 1, 0]; // Time Out Timer for commands for the contactors; 0 = Time-out [100 ms]
+	var CanSrceCurrTmr   = ['  ', '60', 1, 1, 0]; // Time Out Timer for CAN messages with the source current; 0 = Time-out [100 ms]
+	var CanLoadCurrTmr   = ['  ', '61', 1, 1, 0]; // Time Out Timer for CAN messages with the load current; 0 = Time-out [100 ms]
+	var CanHvfeStatTmr   = ['  ', '62', 1, 1, 0]; // Time Out Timer for CAN messages with the HVFE status; 0 = Time-out [100 ms]
+	var CompenCellRes    = ['  ', '63', 1, 1, 0]; // Nominal cell resistance, compensated for temperature and SOC [100 uOhm]
+	var MonitoredCell    = ['  ', '64', 1, 1, 0]; // Number of the cell being monitored in the GUI. Its value is set by the GUI
+	var AltPackVoltage2  = ['  ', '65', 2, 1, 0]; // Alternate Pack Voltage (from the HVFE or the sum of cell voltages, whichever method is not used by packVoltage; PackVtgHVFEBit specifies which method), 0 to 6.55 kV [100 mV]
+	// Data not in RAM, but appended to the stream of RAM data by the BMS controller
+	var MonitCellVtg     = ['  ', '67', 1, 0.01, 2]; // Monitored cell voltage
+	var MonitCellTmp     = ['  ', '68', 1, 1, -128]; // Monitored cell temperature
+	var MonitCellTmpLdOff= ['  ', '69', 1, 1, -128]; // Monitored cell temperature, load off
+	var MonitCellRes     = ['  ', '6A', 1, 0.1, 0]; // Monitored cell resistance
+	var MonitCellStatus  = ['  ', '6B', 1, 1, 0]; // Monitored cell status
+
+
+	/*
+	Unused:
+	OutFlags
+	AvgMinCellTmp2
+	AvgMaxCellTmp2
+	InstPower2
+	TotEnergyIn5
+	TotEnergyOut5
+	StateOfHealth
+	CanContReqTmr
+	CanSrceCurrTmr
+	CanLoadCurrTmr
+	CanHvfeStatTmr
+	CompenCellRes
+	AltPackVoltage2
+	*/
+
+	// Data extraction:
+	// - location (hex) Lite
+	// - location (hex) Pro
+	// - number of bytes
+	// - conversion factor
+	// - offset
+	// Settings
+	var BankCells0  = ['  ', '00', 1,      1, 0]; // Number of cells in bank 0
+	var BankCells1  = ['  ', '01', 1,      1, 0]; // Number of cells in bank 1
+	var BankCells2  = ['  ', '02', 1,      1, 0]; // Number of cells in bank 2
+	var BankCells3  = ['  ', '03', 1,      1, 0]; // Number of cells in bank 3
+	var BankCells4  = ['  ', '04', 1,      1, 0]; // Number of cells in bank 4
+	var BankCells5  = ['  ', '05', 1,      1, 0]; // Number of cells in bank 5
+	var BankCells6  = ['  ', '06', 1,      1, 0]; // Number of cells in bank 6
+	var BankCells7  = ['  ', '07', 1,      1, 0]; // Number of cells in bank 7
+	var BankCells8  = ['  ', '08', 1,      1, 0]; // Number of cells in bank 8
+	var BankCells9  = ['  ', '09', 1,      1, 0]; // Number of cells in bank 9
+	var BankCellsA  = ['  ', '0A', 1,      1, 0]; // Number of cells in bank 10
+	var BankCellsB  = ['  ', '0B', 1,      1, 0]; // Number of cells in bank 11
+	var BankCellsC  = ['  ', '0C', 1,      1, 0]; // Number of cells in bank 12
+	var BankCellsD  = ['  ', '0D', 1,      1, 0]; // Number of cells in bank 13
+	var BankCellsE  = ['  ', '0E', 1,      1, 0]; // Number of cells in bank 14
+	var BankCellsF  = ['  ', '0F', 1,      1, 0]; // Number of cells in bank 15
+	var VCellMin    = ['26', '6A', 1,   0.01, 2]; // Setting for V-cell-min
+	var VCellLow    = ['27', '6B', 1,   0.01, 2]; // Setting for V-cell-low
+	var VCellHi     = ['28', '6C', 1,   0.01, 2]; // Setting for V-cell-high
+	var VCellMax    = ['29', '6D', 1,   0.01, 2]; // Setting for V-cell-max
+	var TemperMin   = ['32', '76', 1,     1, -128]; // Setting for Temperature-min
+	var TemperLow   = ['33', '77', 1,     1, -128]; // Setting for Temperature-low
+	var TemperHi    = ['34', '78', 1,     1, -128]; // Setting for Temperature-high
+	var TemperMax   = ['35', '79', 1,     1, -128]; // Setting for Temperature-max
+
+
+	// Demo
+	var CurrStep = 3;
+
+	// Logo color:#3CA26C
+
+	// VARIABLES
+
+	// Data strings from the BMS
+	var variableData = ''; // Variables
+	var voltageData = ''; // Voltage of each cell
+	var temperatureData = ''; // Temperature of each cell
+	var resistanceData = ''; // Resistance of each cell
+	// Parameter values
+	var battSoc = 0;
+	var battTmpr = 0;
+	var battCurr = 0;
+	var packVoltage = 0;
+	var minCellVtg = 0;
+	var maxCellVtg = 0;
+	var minCellTmp = 0;
+	var maxCellTmp = 0;
+	var connectionData = 0;
+	var displayHdwrSN = 0;
+	var noOfCells = 0;
+	var hdwrRev = 0;
+	var serialNo = 0;
+	var sfwrRev = 0;
+	var powerCycleNo2 = 0;
+	var pwrUpTimer3 = 0;
+	var warningFlags = 0;
+	var lvlFaultFlags = 0;
+	var noOfLoadsOn = 0;
+	var balDisabCause = 0;
+	var loadOnVtg = 0;
+	var missBanksCode = 0;
+	var missBanks = 0;
+	var noOfAMissBank = 0;
+	var missCellNo = 0;
+	var noOfMissCells = 0;
+	var avgCellVtg = 0;
+	var minVtgCellNo = 0;
+	var maxVtgCellNo = 0;
+	var avgCellTmp = 0;
+	var minTmpCellNo = 0;
+	var maxTmpCellNo = 0;
+	var packResistance2 = 0;
+	var minCellRes = 0;
+	var avgCellRes = 0;
+	var maxCellRes = 0;
+	var minResCellNo = 0;
+	var maxResCellNo = 0;
+	var relCCL = 0;
+	var cclLimitCause = 0;
+	var relDCL = 0;
+	var dclLimitCause = 0;
+	var newNoOfSeriesCells = 0;
+	var ioState = 0;
+	var cellValues = ''
+	// Flags
+	var chargeOk    = false;
+	var dischargeOk = false;
+	var loadPwrNow  = false;
+	var sourcePower = false;
+	var warningFlg  = false;
+	var faultFlg    = false;
+
+	// Settings from display
+	var warnSoc = 0; // Above this SoC: green
+	var fltSoc = 0; // Below this SoC: red
+	var demoMode = false; //
+	var vtgMtrRange = 100; // Voltage meter range; cleared to indicate that we we need to set-up the meter labels
+	var currMtrRangeMin = 0; // Current meter range, min; cleared to indicate that we we need to set-up the meter labels
+	var currMtrRangeMax = 100; // Current meter range, max
+	// Settings from BMS
+	// Cell voltages [10 mV + 2 V]
+	var minCellVtgStng = 160; // 
+	var lowCellVtgStng = 140;
+	var hiCellVtgStng = 100;
+	var maxCellVtgStng = 50;
+	// Temperatures [C]
+	var minTmprStng = 60;
+	var lowTmprStng = 40;
+	var hiTmprStng = 10;
+	var maxTmprStng = 0;
+
+	// Plot
+	var plotLastRowData;
+	var plotCanvasCtx;
+	var prevPackCurrPt = -1;
+	var prevPackVtgPt = -1;
+	var prevMinCellPt = -1;
+	var prevMaxCellPt = -1;
+	var prevMinTempPt = -1;
+	var prevMaxTempPt = -1;
+	var prevSOC = -1;
+	var plotVertMarkTmr = 0; // Timer to place vertical lines in the plot
+	// Histograms
+	var noOfSeriesCells = -1;
+	var activeVtgBar; // Bar in a histogram that the user clicked, so we may get its title and show it in the info box
+	var activeTmprBar; // Bar in a histogram that the user clicked, so we may get its title and show it in the info box
+	// WiFi
+	var connectedWiFiNetwork = '';
+	var connectedToInternet = false;
+	var selectedWiFiNetwork = '';
+	var noOfWiFiNetworkBtns = 0;
+	var dummyImg = new Image(); // Dummy image used to see if we have an Internet connection
+	
+	// Data log
+	var dataLogState = DataLogStopCode; // Stopped
+	var dataLogRate = 1; // [s]
+	var capturePointNo = 0;
+	var dataLogInterval; // Function that is called regularly to log data
+	
+	// Demo mode
+	var currDemoUp = 1;
+	var tmprDemoUp = 1;
+	
+	// ***********************
+	// Main screen
+
+
+	// Function called at a regular interval
+	function DemoFunction() {
+
+		// Constants
+		var DemoModeTxt = 'Demo mode';
+
+		document.body.style.cursor = window['showCursor']? 'auto' : 'none';
+
+		// Demo mode
+		if (demoMode) {
+			// Change the Current
+			if (currDemoUp) {
+				battCurr += CurrStep;
+				battCurr = Math.min(100, battCurr);
+				currDemoUp = battSoc > 30;
+			} else {
+				battCurr -= CurrStep;
+				battCurr = Math.max(-100, battCurr);
+				currDemoUp = battSoc > 70;
+			}
+
+
+			// Charging, discharging
+			var isCharging = battCurr < -CurrThresh;
+			var isDischarging = battCurr > CurrThresh;
+
+			// Change the SoC
+			if (isCharging) {
+				battSoc++;
+				battSoc = Math.min(100, battSoc);
+			}
+			if (isDischarging) {
+				battSoc--;
+				battSoc = Math.max(0, battSoc);
+			}
+			// Change the temperature
+			if (tmprDemoUp) {
+				battTmpr++;
+				tmprDemoUp = (battTmpr < 85);
+			} else {
+				battTmpr--;
+				tmprDemoUp = (battTmpr < -40);
+			}
+
+			var alertDiv = document.getElementById('alertDiv');
+			alertDiv.style.visibility = 'visible';
+			alertDiv.innerHTML = DemoModeTxt;
+
+			// Warnings, faults
+			if (battSoc < 10) warningFlg = true;
+			if (battTmpr > 40) warningFlg = true;
+			if (battTmpr > 60) faultFlg = true;
+
+			// Update the Home screen
+			UpdHomeScreen();
+
+		}
+	}
+
+	// Update the Home screen
+	function UpdHomeScreen() {
+
+		// Charging, discharging
+		var isCharging = battCurr < -CurrThresh;
+		var isDischarging = battCurr > CurrThresh;
+
+		// SoC
+		// SoC text
+		var socTxtDiv = document.getElementById('socTxtDiv');
+		var socStr = battSoc.toFixed(1) + ' %';
+		if (isNaN(battSoc)) {
+			socStr = '--';
+		}
+		socTxtDiv.innerHTML = socStr
+		socTxtDiv.style.color = GetColorForOkLevel(battSoc, warnSoc, fltSoc); // Color
+		// Position of charge level
+		document.getElementById('socMidSect').style.top = '-' + battSoc * 220 / 100 + 'px';
+
+		// Current
+		// Text
+		var currTxtDiv = document.getElementById('currTxtDiv');
+		var currStr = battCurr.toFixed(1) + ' A';
+		if (isNaN(battCurr)) {
+			currStr = '--';
+		}
+		currTxtDiv.innerHTML = currStr;
+		var currColor = 'gray';
+		if (isCharging) currColor = 'lime';
+		if (isDischarging) currColor = 'orange';
+		currTxtDiv.style.color = currColor;
+		// Arrow
+		var arrowImgName = 'dot';
+		if (!chargeOk && !dischargeOk) {
+			arrowImgName = 'openSwitch';
+		}
+		if (isCharging) {
+			arrowImgName = 'grnArrLeft';
+		}
+		else if (isDischarging) {
+			arrowImgName = 'orgArrowRight';
+		}
+		document.getElementById('currArrowImg').src = '/static/gr/' + arrowImgName + '.png';
+
+		// Source / load
+		var srcLdImgName = 'dot';
+		if (isCharging) {
+			srcLdImgName = 'solar_panel';
+		}
+		if (isDischarging) {
+			srcLdImgName = 'home_load';
+		}
+		document.getElementById('srcLoadImg').src = '/static/gr/' + srcLdImgName + '.png';
+
+
+		// Temperature
+		// Temperature text
+		var tmprTxtDiv = document.getElementById('tmprTxtDiv');
+	 	var battTmprStr = '--';
+	 	if (!isNaN(battTmpr)) {
+			battTmprStr = battTmpr;
+			if (window['fahrenheitUnits']) {
+				battTmprStr = Number(battTmpr * 9 / 5 + 32).toFixed(1);
+			}
+			var tmprUnitsStr = window['fahrenheitUnits']? FahrenUnitsStr: CelsiusUnitsStr;
+			battTmprStr += tmprUnitsStr;
+			if (battTmpr > 25) { // Hot
+				tmprTxtDiv.style.color = GetColorForOkLevel(-battTmpr, -hiTmprStng, -maxTmprStng); // Color
+			}
+			else { // Cold
+				tmprTxtDiv.style.color = GetColorForOkLevel(battTmpr, lowTmprStng, minTmprStng); // Color
+			}
+		}
+		tmprTxtDiv.innerHTML = battTmprStr;
+		// Position of thermometer
+		var tmprBar = document.getElementById('tmprBar');
+		tmprBar.style.top = (85 - battTmpr) * 90 / (85 + 40) + 'px';
+
+		// Warning / fault
+		var warnFltImg = document.getElementById('warnFltImg');
+		var warnFltImgName = 'dot';
+		if (warningFlg) warnFltImgName = 'warning';
+		if (faultFlg) warnFltImgName = 'fault';
+		warnFltImg.src = '/static/gr/' + warnFltImgName + '.png';
+
+
+
+
+	}
+
+	function GetColorForOkLevel(ctrlVal, warnLim, badLim){ // ctrlVal goes from warnLim = OK down to badLim = bad
+		// OK: green: RGB = 0 255 0
+		// Between limits: from green to red, through yellow (255 255 0)
+		// Bad: red: 255 0 0
+		// Prevent division by 0
+		if (warnLim <= badLim) {
+			warnLim = badLim + 1;
+		}
+		var propLvl = (ctrlVal - badLim) / (warnLim - badLim); // From 1.0 = OK down to 0.0 = bad (underflows and overflows)
+		var redLvl = (1 - propLvl) * 510; // From 0 = OK up to 255 = 1/2 way to bad (underflows and overflows)
+		var grnLvl = propLvl * 510; // From 0 = bad up to 255 = 1/2 way to warning (underflows and overflows)
+		// Clamp between 0 and 255
+		var redLvl = Math.floor(Math.min(255,Math.max(0, redLvl)));
+		var grnLvl = Math.floor(Math.min(255,Math.max(0, grnLvl)));
+		var bluLvl = 0;
+		return ["rgb(",redLvl,",",grnLvl,",",bluLvl,")"].join("");
+	}
+
+	// ***********************
+	// BMS comm
+
+
+	// Request data from the BMS, called regularly
+	function ReqBmsData() {
+
+		// Constants
+		var LithiumateDataPath = '/static/lithiumatedata.html';
+		//NOTE! This will only work on browsers in external devices.
+		// The browser within this Raspberry Pi will not be able to access this file,
+		// because it's local, and ajax requests must go to be through http.
+		// Something like this, but not quite, might work: 'http://localhost/10.1.1.1/lithiumatedata.html';
+
+		//var IE_HackPath = '?IE_hack='; // Hack to make it work in IE: by changing the URL each time, we keep IE from caching it
+
+		// Get data from the BMS, through the lithiumatedata.html file
+		var xmlhttp = new XMLHttpRequest();  // Get an Ajax object
+		// Create a function that will receive data sent from the server
+		xmlhttp.onreadystatechange = function(){
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+				var responseTxt = xmlhttp.responseText; // Get the contents of the file
+				if (responseTxt != '') { // If the file is not empty
+					// Get the serial number of the display, whether or not in the demo mode
+					ProcessDisplayData(responseTxt);
+					// If not in Demo mode, Process the BMS data
+					if (!demoMode) {
+						ProcessBmsData(responseTxt);
+					}
+				}
+			}
+		}
+		xmlhttp.open("GET", LithiumateDataPath + '?t=' + Math.random(), true);  // No need for an IE hack, because this always runs on the Rapsberry Pi
+		xmlhttp.send(null);
+	}
+
+	// Process the data from the display, whether or not in the demo mode
+	function ProcessDisplayData(responseTxt) {
+
+		// Constants
+		var RemoteDisabledTxt = 'disabled';
+		var InternetisConnectedTxt = 'not connected';
+		var InternetConnectedTxt = 'connected';
+
+		// Display
+		// Serial number
+		displayHdwrSN = GetParamValue(responseTxt, 'n');
+		document.getElementById('displayHdwrSNSpan').innerHTML = displayHdwrSN;
+		document.getElementById('dsplSN_Span').innerHTML = displayHdwrSN;
+		// Rev level
+		document.getElementById('dsplRevSpan').innerHTML = RevLevel;
+
+		// Remote status
+		var internetStatusStr = RemoteDisabledTxt;
+		var internetStatusImg = 'remotedisab';
+		if (window['remoteEnab']) {
+			internetStatusStr = InternetisConnectedTxt;
+			internetStatusImg = 'noinet';
+			if (connectedToInternet) {
+				internetStatusStr = InternetConnectedTxt;
+				internetStatusImg = 'inetok';
+			}
+		}
+		document.getElementById('internetStatusSpan').innerHTML = internetStatusStr;
+		document.getElementById('internetStatusIconImg').src = '/static/gr/' + internetStatusImg + '.png';
+
+	}
+
+
+	// Process the data from the BMS
+	function ProcessBmsData(responseTxt) {
+
+		// Strings
+		var NoDataFile = 'No data file';
+		var BootlegCopy = 'Bootleg copy';
+		var UsbDisconnected = 'USB disconnected';
+		var PowerOff = 'BMS power off';
+		var BMSCommOK = 'Communications OK';
+		var OK_Str = 'OK';
+		var DisabledStr = 'not OK';
+		var OnStr = 'On';
+		var OffStr = 'Off';
+		var WarnStr = 'Warning';
+		var FaultStr = 'Fault';
+		var NoBalanceCauses = ['Hot cell board','All within delta bal vtg','All below min bal vtg','Cool down period','Not AC powered'];
+		var LiteLimitCauseStrings = ['No limit','Pack voltage too low','Pack voltage too high','Cell voltage low','Cell voltage high','Temperature too high for charging','Temperature too low for charging','Temperature too high for discharging','Temperature too low for discharging','Charging current peak lasted too long','Discharging current peak lasted too long','Charge testing','Fault'];
+		var ProWarnStrings = ['Under voltage','Over voltage','Over charge current','Over discharge current','Cold temperature','Hot temperature','SOH is low','Isolation fault'];
+		var ProFaultStrings = ['Plug &amp; drive','Interlock','Communication fault','Charge overcurrent','Discharge overcurrent','Over-temperature','Under voltage','Over voltage'];
+
+		// Conversions for cell voltages, temperatures, resistances
+		var CellVtgsX        = [0.01, 2]; // Set of all cell voltages
+		var CellTempX        = [1, -128]; // Set of all temperatures
+		var CellResX         = [0.1, 0]; // Set of all resistances
+
+		// Colors
+		var BarColorOk = 'lime';
+		var BarColorSoSo = 'orange';
+		var BarColorBad = 'red';
+
+		// Bits
+		// ioState
+		var SourcePowerBit   = 0;
+		var LoadPowerBit     = 1;
+		var InterlockTripBit = 2;
+		var ContReqBit       = 3;
+		var CANContReqBit    = 4;
+		var HLIM_Bit         = 5;
+		var LLIM_Bit         = 6;
+		var FanOnBit         = 7;
+
+		// Get the data sections
+		connectionData = GetParamValue(responseTxt, 'p');
+		var constantsData = GetParamValue(responseTxt, 'q');
+		var settingsData = GetParamValue(responseTxt, 's');
+		variableData = GetParamValue(responseTxt, 'x');
+		voltageData = GetParamValue(responseTxt, 'v');
+		temperatureData = GetParamValue(responseTxt, 't');
+		resistanceData = GetParamValue(responseTxt, 'r');
+		var clockData = GetParamValue(responseTxt, 'c');
+
+		// Extract the data
+
+		// Connection status
+		var connectionStatusTxt = '-';
+		if(connectionData === '') {connectionStatusTxt = NoDataFile;}
+		if(connectionData === '0') {connectionStatusTxt = BootlegCopy;}
+		if(connectionData === '1') {connectionStatusTxt = UsbDisconnected;}
+		if(connectionData === '2') {connectionStatusTxt = PowerOff;}
+		if(connectionData === '3') {connectionStatusTxt = BMSCommOK;}
+		document.getElementById('bmsCommStatusSpan').innerHTML = connectionStatusTxt;
+		// If other than BMS power off, hide the option to disable menus and overlays
+		var showMenuDisabStng = true;
+		if (connectionStatusTxt != PowerOff) {
+			if (window['showOverlays']) {
+				document.getElementById('MenusSettingCell1').style.visibility = 'hidden';
+				document.getElementById('MenusSettingCell2').style.visibility = 'hidden';
+			}
+		}
+		// Home screen
+		var alertDiv = document.getElementById('alertDiv');
+		alertDiv.style.visibility = (connectionStatusTxt == BMSCommOK)? 'hidden' : 'visible';
+		alertDiv.innerHTML = connectionStatusTxt;
+		document.getElementById('bmsCommStatusIcon').style.visibility = (connectionStatusTxt == BMSCommOK)? 'visible' : 'hidden';
+
+		// Constants
+
+		// Get constants data
+		noOfCells = 0; // Number of cells
+		noOfCells += ExtractData(settingsData, BankCells0);
+		noOfCells += ExtractData(settingsData, BankCells1);
+		noOfCells += ExtractData(settingsData, BankCells2);
+		noOfCells += ExtractData(settingsData, BankCells3);
+		noOfCells += ExtractData(settingsData, BankCells4);
+		noOfCells += ExtractData(settingsData, BankCells5);
+		noOfCells += ExtractData(settingsData, BankCells6);
+		noOfCells += ExtractData(settingsData, BankCells7);
+		noOfCells += ExtractData(settingsData, BankCells8);
+		noOfCells += ExtractData(settingsData, BankCells9);
+		noOfCells += ExtractData(settingsData, BankCellsA);
+		noOfCells += ExtractData(settingsData, BankCellsB);
+		noOfCells += ExtractData(settingsData, BankCellsC);
+		noOfCells += ExtractData(settingsData, BankCellsD);
+		noOfCells += ExtractData(settingsData, BankCellsE);
+		noOfCells += ExtractData(settingsData, BankCellsF);
+		hdwrRev = ExtractData(constantsData, HdwrRev); // Hardware rev
+		serialNo = ExtractData(constantsData, SerialNo); // Hardware serial number
+		sfwrRev = ExtractData(constantsData, SfwrRev); // Software rev
+		minCellVtgStng = ExtractData(settingsData, VCellMin); // Voltage limit: minimum
+		lowCellVtgStng = ExtractData(settingsData, VCellLow); // Voltage limit: low
+		hiCellVtgStng = ExtractData(settingsData, VCellHi); // Voltage limit: high
+		maxCellVtgStng = ExtractData(settingsData, VCellMax); // Voltage limit: maximum
+		minTmprStng = ExtractData(settingsData, TemperMin); // Temperature limit: minimum
+		lowTmprStng = ExtractData(settingsData, TemperLow); // Temperature limit: low
+		hiTmprStng = ExtractData(settingsData, TemperHi); // Temperature limit: high
+		maxTmprStng = ExtractData(settingsData, TemperMax); // Temperature limit: maximum
+		// Get variable data
+		newNoOfSeriesCells = ExtractData(variableData, NoOfSeriesCells); // Number of cells in series
+		battCurr = ExtractData(variableData, PackCurrent); // Current
+		if (battCurr > 3276.8) {battCurr = battCurr - 6553.6;} // Handle negative current
+		battSoc = ExtractData(variableData, StateOfCharge); // SoC
+		powerCycleNo2 = ExtractData(variableData, PowerCycleNo2); // Power cycle
+		pwrUpTimer3 = ExtractData(variableData, PwrUpTimer3); // Power-up time
+		ioState = ExtractData(variableData, IoState); // I/O state
+		warningFlags = ExtractData(variableData,WarningFlags); // Warning flags
+		lvlFaultFlags = ExtractData(variableData,LvlFaultFlags); // Fault flags
+		noOfLoadsOn = ExtractData(variableData,NoOfLoadsOn); // Balancing: number of loads that are on
+		balDisabCause = ExtractData(variableData,BalDisabCause); // Balancing: disable cause
+		loadOnVtg = ExtractData(variableData,LoadOnVtg); // Balancing: threshold voltage
+		missBanksCode = ExtractData(variableData,MissBanksCode); // Banks
+		missCellNo = ExtractData(variableData,MissCellNo); // Cells, number missing
+		noOfMissCells = ExtractData(variableData,NoOfMissCells); // Cells: numbre of a missing cell
+		packVoltage = ExtractData(variableData, PackVoltage2); // Battery Voltage
+		minCellVtg = ExtractData(variableData,MinCellVtg); // Cell Voltage: minimum
+		avgCellVtg = ExtractData(variableData,AvgCellVtg); // Cell Voltage: average
+		maxCellVtg = ExtractData(variableData,MaxCellVtg); // Cell Voltage: maximum
+		minVtgCellNo = ExtractData(variableData,MinVtgCellNo); // Cell Voltage: number of cell with minimum voltage
+		maxVtgCellNo = ExtractData(variableData,MaxVtgCellNo); // Cell Voltage: number of cell with maximum voltage
+		minCellTmp = ExtractData(variableData,MinCellTmp); // Temperature: minimum
+		avgCellTmp = ExtractData(variableData,AvgCellTmp); // Temperature: average
+		maxCellTmp = ExtractData(variableData,MaxCellTmp); // Temperature: maximum
+		minTmpCellNo = ExtractData(variableData,MinTmpCellNo); // Temperature: number of cell with minimum temperature
+		maxTmpCellNo = ExtractData(variableData,MaxTmpCellNo); // Temperature: number of cell with maximum temperature
+		packResistance2 = ExtractData(variableData,PackResistance2); // Battery resistance:
+		minCellRes = ExtractData(variableData,MinCellRes); // Cell Resistance: minimum
+		avgCellRes = ExtractData(variableData,AvgCellRes); // Cell Resistance: average
+		maxCellRes = ExtractData(variableData,MaxCellRes); // Cell Resistance: maximum
+		minResCellNo = ExtractData(variableData,MinResCellNo); // Cell Resistance: number of cell with minimum resistance
+		maxResCellNo = ExtractData(variableData,MaxResCellNo); // Cell Resistance: number of cell with maximum resistance
+		relCCL = ExtractData(variableData,RelCCL).toFixed(0); // Limits: CCL
+		cclLimitCause = ExtractData(variableData,CclLimitCause); // Limits: cause for reduced CCL
+		relDCL = ExtractData(variableData,RelDCL).toFixed(0); // Limits: DCL
+		dclLimitCause = ExtractData(variableData,DclLimitCause); // Limits: cause for reduced DCL
+
+		// Show the data
+
+		// Update the Home screen
+		UpdHomeScreen();
+
+		// Other screens
+
+		// Hardware
+		var hdwrRevChar = String.fromCharCode("A".charCodeAt(0) + hdwrRev);
+		document.getElementById('hdwrRevDiv').innerHTML = hdwrRevChar;
+		document.getElementById('hdwrSerNoDiv').innerHTML = serialNo;
+		// Software
+		document.getElementById('sfwrRevDiv').innerHTML = sfwrRev;
+
+ 		// Current
+		document.getElementById('currentDiv').innerHTML = battCurr.toFixed(1);
+		// SoC
+		document.getElementById('socDiv').innerHTML = battSoc.toFixed(1);
+
+		// Power cycle and up time
+		document.getElementById('powerCycleNoDiv').innerHTML = powerCycleNo2;
+		document.getElementById('pwrUpTimerDiv').innerHTML = pwrUpTimer3;
+
+		var SourcePowerBit   = 0;
+		var LoadPowerBit     = 1;
+		var InterlockTripBit = 2;
+		var ContReqBit       = 3;
+		var CANContReqBit    = 4;
+		var HLIM_Bit         = 5;
+		var LLIM_Bit         = 6;
+		var FanOnBit         = 7;
+
+		// Status flags
+		sourcePower = (ioState & (1<<SourcePowerBit)) !== 0;
+		loadPwrNow  = (ioState & (1<<LoadPowerBit  )) !== 0;
+		chargeOk    = (ioState & (1<<HLIM_Bit      ))  == 0;
+		dischargeOk = (ioState & (1<<LLIM_Bit      ))  == 0;
+		warningFlg  = warningFlags != 0;
+		faultFlg    = lvlFaultFlags != 0;
+
+		// Show them
+		document.getElementById('bmsStatusSpan').innerHTML = faultFlg? FaultStr : warningFlg? WarnStr : OK_Str;
+		document.getElementById('chargeOkDiv').innerHTML = chargeOk? OK_Str : DisabledStr;
+		document.getElementById('dischargeOkDiv').innerHTML = dischargeOk? OK_Str : DisabledStr;
+		var powerSupplyStr = '';
+		if (loadPwrNow) {
+			powerSupplyStr += 'Load ';
+		}
+		if (sourcePower) {
+			powerSupplyStr += 'Src.';
+		}
+		document.getElementById('powerSpan').innerHTML = powerSupplyStr;
+
+
+		// Warnings and faults
+		var warningStr = '';
+		var faultStr = '';
+		var bitNo;
+		for (var bitNo = 0; bitNo < 8; bitNo++) {
+			if ((warningFlags & (1<<bitNo)) !== 0) {warningStr += ProWarnStrings[bitNo];}
+			if ((lvlFaultFlags & (1<<bitNo)) !== 0) {faultStr += ProFaultStrings[bitNo];}
+		}
+		var warnFltStr = warningStr;
+		if (faultStr != '') {
+			warnFltStr = faultStr;
+		}
+ 			document.getElementById('warnFltDiv').innerHTML = warnFltStr;
+
+		// Balancing
+		var balanceStr = (loadOnVtg > 4.5)? OffStr : noOfLoadsOn + ' loads';
+		document.getElementById('balanceDiv').innerHTML = balanceStr;
+		var balanceDetailsStr = (loadOnVtg > 4.5)? NoBalanceCauses[balDisabCause] : 'on if vtg > ' + loadOnVtg.toFixed(2) + ' V';
+		document.getElementById('balDetailsDiv').innerHTML = balanceDetailsStr;
+
+		var MissingStr = ' missing, including # '
+
+		// Banks
+		var missBanks = missBanksCode % 16;
+		var noOfAMissBank = Math.floor(missBanksCode / 16);
+		var banksStr = (missBanks === 0)? OK_Str : FaultStr;
+		document.getElementById('banksStatusDiv').innerHTML = banksStr;
+		var banksDetailsStr = (missBanks === 0)? '' : missBanks + MissingStr + noOfAMissBank;
+		document.getElementById('banksDetailsDiv').innerHTML = banksDetailsStr;
+		// Cells
+		var cellsStr = (noOfMissCells === 0)? OK_Str : FaultStr;
+		document.getElementById('cellsStatusDiv').innerHTML = cellsStr;
+		var cellsDetailsStr = (noOfMissCells === 0)? '' : noOfMissCells + MissingStr + missCellNo;
+		document.getElementById('cellsDetailsDiv').innerHTML = cellsDetailsStr;
+
+
+		// Battery Voltage
+		document.getElementById('battVtgSpan').innerHTML = packVoltage.toFixed(2) + 'V';
+		// Cell Voltage
+		var vtgStr = minCellVtg.toFixed(2) + ' min (#' + minVtgCellNo + '), ' + avgCellVtg.toFixed(2) + ' avg, ' + maxCellVtg.toFixed(2) + ' max (#' + maxVtgCellNo + ')'  + ' V';
+		document.getElementById('cellVtgSpan').innerHTML = vtgStr;
+
+		// Temperature
+		battTmpr = avgCellTmp;
+		var tmpStr = minCellTmp + ' min (#' + minTmpCellNo + '), ' + avgCellTmp + ' avg, ' + maxCellTmp + ' max (#' + maxTmpCellNo + ')';
+		document.getElementById('battTmprSpan').innerHTML = avgCellTmp;
+		document.getElementById('cellTmprSpan').innerHTML = tmpStr;
+
+		// Battery Resistance
+		document.getElementById('battResDiv').innerHTML = packResistance2.toFixed(1);
+		// Cell Resistance
+		var resStr = minCellRes.toFixed(1) + ' min (#' + minResCellNo + '), ' + avgCellRes.toFixed(1) + ' avg, ' + maxCellRes.toFixed(1) + ' max (#' + maxResCellNo + ')';
+		document.getElementById('cellResDiv').innerHTML = resStr;
+
+
+		// Limits
+		document.getElementById('cclDiv').innerHTML = relCCL;
+		document.getElementById('cclCauseDiv').innerHTML = LiteLimitCauseStrings[cclLimitCause];
+		document.getElementById('dclDiv').innerHTML = relDCL;
+		document.getElementById('dclCauseDiv').innerHTML = LiteLimitCauseStrings[dclLimitCause];
+
+		// Number of cells in series
+
+		// Get the dimensions of the histogram windows
+		var vtgHistogramDiv = document.getElementById('vtgHistogramDiv');
+		var vtgHistogramWidth = vtgHistogramDiv.offsetWidth;
+		var vtgHistogramHeight = vtgHistogramDiv.offsetHeight;
+		var tmprHistogramDiv = document.getElementById('tmprHistogramDiv');
+		var tmprHistogramWidth = tmprHistogramDiv.offsetWidth;
+		var tmprHistogramHeight = tmprHistogramDiv.offsetHeight;
+
+		if (newNoOfSeriesCells !== noOfSeriesCells) { // If the number of cells has changed
+			noOfSeriesCells = newNoOfSeriesCells;
+			// Create bars in the histograms
+			// Cell voltages Histogram
+			var barWidth = vtgHistogramWidth / noOfCells -4;
+			var histogHTML = '';
+			for (var cellNo = 0; cellNo < noOfCells; cellNo++) { // For each cell
+				var leftPt = cellNo * (barWidth + 2);
+				var histogDetailsOvrly = document.getElementById('vtgHistogDetailsOvrly');
+				histogHTML += '<div class="histogBar" id="vbar' + cellNo + '" style="width:' + barWidth + 'px; left:' + leftPt + 'px;"  onClick="activeVtgBar = this;"><\/div>';
+			}
+			vtgHistogramDiv.innerHTML = histogHTML;
+
+			// Cell temperatures Histogram
+			barWidth = tmprHistogramWidth / noOfCells -2;
+			histogHTML = '';
+			for (var cellNo = 0; cellNo < noOfCells; cellNo++) { // For each cell
+				var leftPt = cellNo * barWidth + 2;
+				histogHTML += '<div class="histogBar" id="tbar' + cellNo + '" style="width:' + barWidth + 'px; left:' + leftPt + 'px;"  onClick="activeTmprBar = this;"><\/div>';
+			}
+			tmprHistogramDiv.innerHTML = histogHTML;
+		}
+
+		// Cell voltages Histogram
+		cellValues = '';
+		for (var cellNo = 0; cellNo < noOfCells; cellNo++) { // For each cell
+			var cellVtg = parseInt(voltageData.substr(2 * (cellNo + 1),2),16) * CellVtgsX[0] + CellVtgsX[1];
+			var barX = document.getElementById('vbar' + cellNo);
+			barX.style.backgroundColor = ((cellVtg < minCellVtgStng) || (cellVtg > maxCellVtgStng))? BarColorBad : ((cellVtg < lowCellVtgStng) || (cellVtg > hiCellVtgStng))? BarColorSoSo : BarColorOk;
+			var topPx = Math.max(0,Math.min(vtgHistogramHeight-3,((maxCellVtgStng + 0.2 - cellVtg) / (maxCellVtgStng - minCellVtgStng + 0.4) * vtgHistogramHeight)));
+			barX.style.top = topPx  + 'px';
+			var barTitle = '#' + cellNo + '\n' + cellVtg.toFixed(2) + 'V';
+			barX.title = barTitle;
+			if (barX == activeVtgBar) {
+				document.getElementById('selCellVtgSpan').innerHTML = barTitle;
+			}
+			// For data log
+			cellValues += cellVtg + '\t';
+		}
+		// Configured settings
+		document.getElementById('minCellVtgSpan').innerHTML = minCellVtgStng.toFixed(2);
+		document.getElementById('lowCellVtgSpan').innerHTML = lowCellVtgStng.toFixed(2);
+		document.getElementById('highCellVtgSpan').innerHTML = hiCellVtgStng.toFixed(2);
+		document.getElementById('maxCellVtgSpan').innerHTML = maxCellVtgStng.toFixed(2);
+
+		// Cell temperatures Histogram
+		for (var cellNo = 0; cellNo < noOfCells; cellNo++) { // For each cell
+			var cellTemper = parseInt(temperatureData.substr(2 * (cellNo + 1),2),16) * CellTempX[0] + CellTempX[1];
+			var barX = document.getElementById('tbar' + cellNo);
+			barX.style.backgroundColor = ((cellTemper < minTmprStng) || (cellTemper > maxTmprStng))? BarColorBad : ((cellTemper < lowTmprStng) || (cellTemper > hiTmprStng))? BarColorSoSo : BarColorOk;
+			var topPx = Math.max(0,Math.min(tmprHistogramHeight-3,((maxTmprStng + 10 - cellTemper) / (maxTmprStng - minTmprStng + 20) * tmprHistogramHeight)));
+			barX.style.top = topPx  + 'px';
+			var barTitle = '#' + cellNo + '\n' + cellTemper.toFixed(0) + '&deg;C';
+			barX.title = barTitle;
+			if (barX == activeTmprBar) {
+				document.getElementById('selCellTmprSpan').innerHTML = barTitle;
+			}
+		}
+		// Configured settings
+		document.getElementById('minTmprSpan').innerHTML = minTmprStng.toFixed(0);
+		document.getElementById('lowTmprSpan').innerHTML = lowTmprStng.toFixed(0);
+		document.getElementById('highTmprSpan').innerHTML = hiTmprStng.toFixed(0);
+		document.getElementById('maxTmprSpan').innerHTML = maxTmprStng.toFixed(0);
+
+	}
+
+	//  Extract a parameter value from the received data
+	function GetParamValue(responseTxt, paramLetter) {
+		var startPos = responseTxt.indexOf(paramLetter + '=\'');
+		var endPos = responseTxt.indexOf(';',startPos);
+		var paramValue = '';
+		if ((startPos != -1) && (endPos != -1)) {
+			paramValue = responseTxt.slice(startPos +3, endPos -1);
+		}
+		return paramValue;
+	}
+
+	// Extract data from a string
+	function ExtractData (dataStr, extrArry) {
+		var startLoc = 2 * (1 + parseInt(extrArry[1], 16));
+		var noOfChars = 2 * extrArry[2];
+		var convF = extrArry[3];
+		var ofst = extrArry[4];
+		var extrData = 0;
+		try {
+			extrData = parseInt(dataStr.substr(startLoc,noOfChars),16) * convF + ofst;
+			if (isNaN(extrData)) {
+				extrData = 0;
+			}
+		} catch(e){
+			alert(dataStr + '_' +extrArry);
+		}
+		return extrData;
+	}
+
+
+
+	// ***********************
+	// Open / close screens
+
+	// Show a screen, hiding the menu screen
+	function ShowScreenHideMenu(screenId) {
+		ShowScreen(screenId);
+		document.getElementById('menuScreen').style.visibility = 'hidden';
+	}
+
+	// Show the menu screen, hiding a screen
+	function ShowMenuHideScreen(divId) {
+		HideScreen(divId);
+		ShowScreen('menuScreen');
+	}
+
+	// Hide a screen, revealing the Home screen
+	function HideScreen(divId) {
+		divId.parentNode.style.visibility = 'hidden';
+	}
+
+	// Show a screen
+	function ShowScreen(overlayId) {
+		document.getElementById(overlayId).style.visibility = 'visible';
+	}
+
+	// Show a screen when a main screen item is clicked
+	function ShowScreenFromMainScreen(overlayId) {
+		if (window['showOverlays']) {
+			document.getElementById(overlayId).style.visibility = 'visible';
+		}
+	}
+
+
+	// ***********************
+	// Radio buttons
+
+	// The user clicked a radio button
+	function CheckRadioBtn(sender) {
+		var btnNo = sender.id.slice(-1);
+		var varName = sender.id.slice(0, sender.id.length -4);
+		UpdRadioBtns(varName, btnNo);
+	}
+
+	// Update radio buttons
+	function UpdRadioBtns(varName, activeBtnNo) {
+
+		// Number of buttons for each variable
+		var noOfBtnsTbl = {'plotBattVtg': NoOfPlotRngBtns, 'plotBattCurr': NoOfPlotRngBtns, 'logData': NoOfDataLogBtns, 'logDataRate': NoOfDataLogRateBtns};
+
+		//
+		var noOfBtns = noOfBtnsTbl[varName];
+		for (var btnNo = 0; btnNo < noOfBtns; btnNo++) {
+			var btnID = varName + 'Div' + btnNo;
+			var radioBtn = document.getElementById(btnID);
+			var btnColor = RadioBtnColorOff;
+			var isSelected = false;
+			if (btnNo == activeBtnNo) {
+				// Highlight this button
+				btnColor = RadioBtnColorOn;
+				isSelected = true;
+			}
+			radioBtn.style.background = btnColor;
+			radioBtn.selected = isSelected;
+		}
+	}
+
+	// ***********************
+	// Settings screen
+
+	// The user clicked a checkbox
+	function ToggleChkBox(varName) {
+		window[varName] = !window[varName];
+		UpdChkBox(varName);
+	}
+
+	// Increment or decrement the value of a parameter
+	function ChangeVal(varName, isUp, limitVal) {
+		if (isUp) {
+			if (window[varName] < limitVal) {
+				window[varName]++;
+			}
+		} else {
+			if (window[varName] > limitVal) {
+				window[varName]--;
+			}
+		}
+		document.getElementById(varName + 'Div').innerHTML = window[varName] + ' ' + PctUnitsStr;
+	}
+
+	// Update the status shown for a checkbox
+	function UpdChkBox(varName) {
+		var checkBoxImgName = window[varName]? 'on' : 'off';
+		document.getElementById(varName + 'Img').src = '/static/gr/chkbox_' + checkBoxImgName + '.png';
+	}
+
+	// Save the preferences into cookies
+	function SaveSettings() {
+		// Plot ranges
+		SavePlotRng('plotBattVtg');
+		SavePlotRng('plotBattCurr');
+		// Other settings
+		SaveStng('warnSoc');
+		SaveStng('fltSoc');
+		// Bool
+		SaveStng('demoMode');
+		SaveStng('fahrenheitUnits');
+		SaveStng('showCursor');
+		SaveStng('showOverlays');
+		// Control the Raspberry Pi
+		ReqPiCtrl();
+	}
+
+
+	// Restore the preferences from cookies
+	function SetSettingsFromCookies() {
+		// Constants
+		// Default values
+		var PlotBattVtgDfltBtnNo = 0;
+		var PlotBattCurrDfltBtnNo = 0;
+		var WarnSocDflt = 20;
+		var FltSocDflt = 10;
+
+		// Plot ranges
+		SetPlotRngFromCookie('plotBattVtg', PlotBattVtgDfltBtnNo);
+		SetPlotRngFromCookie('plotBattCurr', PlotBattCurrDfltBtnNo);
+		// % Values
+		SetPctValStngFromCookie('warnSoc', WarnSocDflt);
+		SetPctValStngFromCookie('fltSoc', FltSocDflt);
+		// Bool value
+		SetBoolStngFromCookie('demoMode', 'false');
+		SetBoolStngFromCookie('fahrenheitUnits', 'false');
+		SetBoolStngFromCookie('showCursor', 'true');
+		SetBoolStngFromCookie('showOverlays', 'true');
+		SetBoolStngFromCookie('remoteEnab', 'false');
+	}
+
+	// Get a plot range setting from a cookie
+	function SetPlotRngFromCookie(varName, dfltRangeNo) {
+		// Get the button number (0, 1, 2... 6) from the cookie
+		var rangeNo = GetValStng(varName, dfltRangeNo);
+		// Update the plot range buttons
+		UpdRadioBtns(varName, rangeNo)
+		UpdPlotRangeBtns(varName, rangeNo);
+	}
+	
+	
+	// The user clicked a plot range button
+	function PlotRangeBtnClick(sender) {
+		// Get info from the ID of the button
+		var varName = sender.id.slice(0, sender.id.length -4);
+		var btnNo = sender.id.slice(-1);
+		// Update the plot range buttons
+		UpdPlotRangeBtns(varName, btnNo);
+	}
+
+	// Update the plot range buttons
+	function UpdPlotRangeBtns(varName, rangeNo) {
+		if (rangeNo < NoOfPlotRngBtns) {
+			// Update the Y-axis range
+			var btnId = varName + 'Div' + rangeNo;
+			var plotBtn = document.getElementById(btnId);
+			var plotEndVal = plotBtn.innerHTML;
+			var kPos = plotEndVal.indexOf('k');
+			if (kPos != -1) {
+				var numericPortion = plotEndVal.substring(0,kPos);
+				plotEndVal = 1000 * numericPortion;
+			}
+			if (varName == 'plotBattCurr') {
+				plotYAxisTopVals[0] = plotEndVal;
+				plotYAxisBotVals[0] = -plotEndVal;
+			} else {
+				plotYAxisTopVals[1] = plotEndVal;
+			}
+			// Change the Y-Axis parameter to one that doesn't change with settings
+			// This way, when the user changes to current or voltage, the labels are refreshed correctly
+			UpdPlotYAxisLabels(PlotParamEnum.SocLevel);
+		}
+	}
+
+	// Get a % value setting from a cookie
+	function SetPctValStngFromCookie(varName, dfltVal) {
+		var cookieVal = GetValStng(varName, dfltVal);
+		document.getElementById(varName + 'Div').innerHTML = cookieVal + ' ' + PctUnitsStr;
+	}
+
+	// Get a value setting
+	function GetValStng(varName, dfltVal) {
+		var cookieVal = GetCookie(varName, dfltVal);
+		if (cookieVal == '') {
+			cookieVal = dfltVal;
+		}
+		if (isNaN(parseInt(cookieVal))) {
+			cookieVal = dfltVal;
+		}
+		window[varName] = cookieVal;
+		return cookieVal;
+	}
+
+	// Save a plot range setting preference to a cookie
+	function SavePlotRng(varName) {
+		var btnNo;
+		for (btnNo = 0; btnNo < NoOfPlotRngBtns; btnNo++) {
+			var btnId = varName + 'Div' + btnNo;
+			if (document.getElementById(btnId).selected) {
+				break;
+			}
+		}
+		SetCookie(varName, btnNo);
+	}
+
+	// Save a value setting preference to a cookie
+	function SaveStng(varName) {
+		SetCookie(varName, window[varName]);
+	}
+
+
+	// Get a boolean setting from a cookie
+	function SetBoolStngFromCookie(varName, defState) { 
+		var cookieVal = GetCookie(varName, defState) != 'false';
+		window[varName] = cookieVal;
+		UpdChkBox(varName);
+	}
+	
+	// Toggle the menus and overlays checkbox
+	function ToggleRemoveOverlays() {
+		var willToggle = true;  // Assume disabled: we will toggle
+		if (window['showOverlays']) { // Enabled, asking to be disabled
+			if (window['showOverlays']) { // Ask the user to confirm
+				willToggle = confirm ('ARE YOU ABSOLUTELY SURE you want to disable menus and overlays? (WARNING: Once you leave the settings screen, this cannot be undone!)')
+			}
+		}
+		if (willToggle) {
+			ToggleChkBox('showOverlays');
+		}
+	}
+
+	// ***********************
+	// Cookies
+
+	// Read a cookie
+	function GetCookie(cookieName, dfltVal) {
+		var cookieVal = dfltVal
+		var cookieNameEqual = cookieName + "=";
+		var cookieList = document.cookie.split(';');
+		for (var cookieNo = 0; cookieNo < cookieList.length; cookieNo++) {
+			var cookieSet = cookieList[cookieNo];
+			// Remove leading blank characters
+			while (cookieSet.charAt(0)==' ') {
+				cookieSet = cookieSet.substring(1);
+			}
+			//
+			if (cookieSet.indexOf(cookieNameEqual) == 0) {
+				cookieVal = cookieSet.substring(cookieNameEqual.length, cookieSet.length);
+			}
+		}
+		return cookieVal;
+	}
+
+	// Set a cookie
+	function SetCookie(cookieName, cookieVal) {
+		exdays = 1000;
+		var d = new Date();
+		d.setTime(d.getTime() + (exdays*24*60*60*1000));
+		var expires = "expires="+d.toUTCString();
+		document.cookie = cookieName + "=" + cookieVal + "; " + expires;
+	}
+
+
+	// ***********************
+	// Data log
+
+
+	// Initialize the Data Log
+	function InitDataLog() {
+		
+		// Highlight the 'Stop' button
+		UpdRadioBtns('logData', 2);
+		
+		// Select the saved logging rate
+		var selBtnNo = GetCookie('logDataRate', 0);
+		UpdRadioBtns('logDataRate', selBtnNo);
+		
+		// Start the function called at a regular interval
+		var selRadioBtn = document.getElementById('logDataRateDiv' + selBtnNo);
+		StartDataLogTimer(selRadioBtn);
+	}
+	
+
+	// The user clicked the Record button for  Data Logging
+	function DataLogRecordBtnClick() {
+
+		// Locals
+		DATA_LOG_HEADER = 'Point\tReal time\tPower-up time\tAsrc\tAlod\tApack\tVpack\tSOC\tDOD\tLoads\tBalVtg\tBalCause\tIoState\tFlags\tBankStat0\tBankSta1t\tBankStat2\tBankStat3\tBankStat4\tBankStat5\tBankStat6\tBankStat7\tBankStat8\tBankStat9\t10\tBankStat11\tBankStat12\tBankStat13\tBankStat14\tBankStat15\tCCL\tCCLcause\tDCL\tDCLcause\tWarnFlags\tFltFlags\tMissBanks\tMissBank\tMissCells\tMissCell\tVmin\tVminNo\tVminAvg\tVavg\tVmax\tVmaxNo\tVmaxAvg\tTmin\tTminNo\tTavg\tTmax\tTmaxNo\tRmin\tRminNo\tRavg\tRmax\tRmaxNo\tRpack\tNmonit\tVmonit\tTmonit\tTmonitOff\tRmonit\tSmonit';
+		DATA_LOG_HEADER_CELL = '\tCell '
+
+
+		// Just started
+		if (dataLogState == DataLogStopCode) { // If it was stopped before
+			// Start logging data to the USB drive
+			capturePointNo = 0;
+			// Do the header
+			var dataLogHeader = DATA_LOG_HEADER;
+			for (var cellNo = 0; cellNo < noOfSeriesCells; cellNo++) {
+				dataLogHeader += DATA_LOG_HEADER_CELL + cellNo;
+			}
+			LogData(dataLogHeader);
+		}
+				
+		// Set the state
+		dataLogState = DataLogRecordCode;
+	}
+
+	// The user clicked the Pause button for Data Logging
+	function DataLogPauseBtnClick() {
+				
+		// Set the state
+		dataLogState = DataLogPauseCode;
+	}
+
+	// The user clicked the Stop button for Data Logging
+	function DataLogStopBtnClick() {
+				
+		// Stop logging data to the USB drive
+		LogData('');
+
+		// Set the state
+		dataLogState = DataLogStopCode;
+
+	}
+	
+	// The user clicked the Eject button for the USB
+	function DataLogEjectBtnClick() {
+	
+		// Locals
+		var UNMOUNT_USB_CODE = 'U';
+				
+		// Stop logging data to the USB drive
+		DataLogStopBtnClick();
+
+		// Dismount the USB
+		LogData(UNMOUNT_USB_CODE);
+	}
+	
+	
+	
+
+	
+	// The user clicked a log rate button
+	function LogRateBtnClick(sender) {
+		
+		// Save the number of the rate button in a cookie
+		var clickedBtnNo = sender.id.charAt(sender.id.length -1); // Get the number of the button from its ID
+		SetCookie('logDataRate', clickedBtnNo);
+
+		// Change the log rate
+		clearInterval(dataLogInterval);
+		StartDataLogTimer(sender);
+	}
+	
+	// Start a timer for data logging
+	function StartDataLogTimer(logRateBtn) {
+		if (logRateBtn != null) {
+			var btnValue = logRateBtn.innerHTML;
+			var isMinutes = (btnValue.indexOf('m') != -1);
+			btnValue = btnValue.replace(' ','').replace('s','').replace('m','');
+			var dataLogRate = parseInt(btnValue);
+			if (isMinutes) {
+				dataLogRate *= 60;
+			}
+			dataLogRate *= 1000; // Convert to ms
+			dataLogInterval = setInterval(PrepLogData, dataLogRate); // Prepare and log data from the BMS
+		}
+	}
+	
+	
+	// Prepare and log data to the USB drive
+	function PrepLogData(logDataStr) {
+
+		// If recording
+		if (dataLogState == DataLogRecordCode) {
+
+			// Prepare a line with all the items
+			var logDataStr = '';
+			// Point number, real time
+			logDataStr += capturePointNo + '\t'; // Data point
+			var d = new Date();
+			logDataStr += d.toLocaleTimeString() + '\t'; // Real time
+			// Power supply
+			logDataStr += ExtractData(variableData,PwrUpTimer3) + '\t'; // On time
+			logDataStr += ExtractData(variableData,InstSrcCurr2) + '\t'; // Source current
+			logDataStr += ExtractData(variableData,InstLodCurr2) + '\t'; // Load current
+			// Pack
+			logDataStr += battCurr + '\t' ; // Pack current
+			logDataStr += packVoltage + '\t'; // Pack voltage
+			logDataStr += battSoc + '\t' ; // SoC
+			logDataStr += ExtractData(variableData,DepthOfDisch5) + '\t' ; // DoD
+			// Balance
+			logDataStr += noOfLoadsOn + '\t' ; // Number of loads
+			logDataStr += loadOnVtg + '\t' ; // Load on voltage
+			logDataStr += balDisabCause + '\t' ; // Balance disable cause
+			// State
+			logDataStr += ioState + '\t' ; // IO State
+			logDataStr += ExtractData(variableData, ExtFlags) + '\t'; // External flags
+			logDataStr += ExtractData(variableData, BankStatus0) + '\t'; // Bank 0
+			logDataStr += ExtractData(variableData, BankStatus1) + '\t'; // Bank 1
+			logDataStr += ExtractData(variableData, BankStatus2) + '\t'; // Bank 2
+			logDataStr += ExtractData(variableData, BankStatus3) + '\t'; // Bank 3
+			logDataStr += ExtractData(variableData, BankStatus4) + '\t'; // Bank 4
+			logDataStr += ExtractData(variableData, BankStatus5) + '\t'; // Bank 5
+			logDataStr += ExtractData(variableData, BankStatus6) + '\t'; // Bank 6
+			logDataStr += ExtractData(variableData, BankStatus7) + '\t'; // Bank 7
+			logDataStr += ExtractData(variableData, BankStatus8) + '\t'; // Bank 8
+			logDataStr += ExtractData(variableData, BankStatus9) + '\t'; // Bank 9
+			logDataStr += ExtractData(variableData, BankStatusA) + '\t'; // Bank A
+			logDataStr += ExtractData(variableData, BankStatusB) + '\t'; // Bank B
+			logDataStr += ExtractData(variableData, BankStatusC) + '\t'; // Bank C
+			logDataStr += ExtractData(variableData, BankStatusD) + '\t'; // Bank D
+			logDataStr += ExtractData(variableData, BankStatusE) + '\t'; // Bank E
+			logDataStr += ExtractData(variableData, BankStatusF) + '\t'; // Bank F
+			// Limits
+			logDataStr += relCCL + '\t' ; // CCL
+			logDataStr += cclLimitCause + '\t' ; // CCL cause
+			logDataStr += relDCL + '\t' ; // DCL
+			logDataStr += dclLimitCause + '\t' ; // DCL cause
+			// Warnings and faults
+			logDataStr += warningFlags + '\t' ; // Warning flags
+			logDataStr += lvlFaultFlags + '\t' ; // Fault flags
+			logDataStr += missBanks + '\t' ; // Number of missing banks (low nybble)
+			logDataStr += noOfAMissBank + '\t' ; // Number of a missing bank
+			logDataStr += noOfMissCells + '\t' ; // Number of missing cells
+			logDataStr += missCellNo + '\t' ; // Number of a missing cell
+			// Cell voltage
+			logDataStr += minCellVtg + '\t' ; // Min
+			logDataStr += minVtgCellNo + '\t' ; // Min number
+			logDataStr += ExtractData(variableData, AvgMinCellVtg2) + '\t' ; // Time-averaged minimum cell voltage
+			logDataStr += avgCellVtg + '\t' ; // Average
+			logDataStr += maxCellVtg + '\t' ; // Max
+			logDataStr += maxVtgCellNo + '\t' ; // Max number
+			logDataStr += ExtractData(variableData, AvgMaxCellVtg2) + '\t' ; // Time-averaged maximum cell voltage
+			// Temperature
+			logDataStr += minCellTmp + '\t' ; // Min
+			logDataStr += minTmpCellNo + '\t' ; // Min number
+			logDataStr += avgCellTmp + '\t' ; // Average
+			logDataStr += maxCellTmp + '\t' ; // Max
+			logDataStr += maxTmpCellNo + '\t' ; // Max number
+			// Resistance
+			logDataStr += minCellRes + '\t' ; // Min
+			logDataStr += minResCellNo + '\t' ; // Min number
+			logDataStr += avgCellRes + '\t' ; // Average
+			logDataStr += maxCellRes + '\t' ; // Max
+			logDataStr += maxResCellNo + '\t' ; // Max number
+			logDataStr += packResistance2 + '\t' ; // Pack resistance
+			// Monitored cell
+			logDataStr += ExtractData(variableData, MonitoredCell) + '\t'; // Cell number
+			logDataStr += ExtractData(variableData, MonitCellVtg) + '\t'; // Voltage
+			logDataStr += ExtractData(variableData, MonitCellTmp) + '\t'; // Temperature
+			logDataStr += ExtractData(variableData, MonitCellTmpLdOff) + '\t'; // Temperature Off
+			logDataStr += ExtractData(variableData, MonitCellRes) + '\t'; // Resistance
+			logDataStr += ExtractData(variableData, MonitCellStatus) + '\t'; // Status
+			// All cells' data (voltage, temperature or resistance, based on which histogram is selecetd at the time)
+			logDataStr += cellValues;
+
+			// Log data to the USB drive
+			LogData(logDataStr);
+
+			capturePointNo++;
+		}
+	}
+	
+
+	// Log data to the USB drive
+	function LogData(logDataStr) {
+
+		// Constants
+		var PostSrvc = '/postLogDataSrvc';
+
+		// Send the login credentials to the Python script using AJAX
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+				var responseText = xmlhttp.responseText;
+				// Assume OK
+				var dataPointTxt = 'Data point: ' + capturePointNo;
+				// Error
+				if (responseText != '') {
+					dataPointTxt = responseText;
+					capturePointNo = 0;
+				} 
+				// Show it
+				document.getElementById('logPointDiv').innerHTML = dataPointTxt
+			}
+		}
+		xmlhttp.open("POST", PostSrvc, true);
+		xmlhttp.setRequestHeader(ContentKey, ContentVal);
+		var postData = 'd=' + logDataStr;
+		xmlhttp.send(postData);
+	}
+
+
+	// ***********************
+	// WiFi
+
+	// Open the WiFi Network screen
+	function OpenWiFiNetworkScreen() {
+
+		var PopulatingTxt = '... preparing list ...';
+
+
+		// Clear the password
+		document.getElementById('wiFiPasswordSpan').innerHTML = '';
+
+		// Indicate we're getting the list
+		document.getElementById('wiFiNetBtnsDivL').innerHTML = PopulatingTxt;
+		document.getElementById('wiFiNetBtnsDivR').innerHTML = '';
+
+		// Request a list of WiFi networks
+		ReqWifiList();
+
+		// Open the screen
+		ShowScreenHideMenu('wifiNetScreen')
+	}
+
+	// Show the available WiFi Networks
+	function ShowWiFiNetworks(wifiNetListStr) {
+
+		// Constants
+		var NoOfNetRows = 6;
+		var MaxNetworkNameLength = 30;
+
+		// Convert the returned string to a list of networks
+		// The 1st one is the selected network (if any), the rest are all the networks (including the selected one)
+		var wifiNetworks = wifiNetListStr.split(',');
+		// Extract the 1st one as the selected one, leaving the rest in place
+		connectedWiFiNetwork = wifiNetworks.shift();
+
+		// Prepare the network buttons
+		var buttonsHTML = ['',''];
+		noOfWiFiNetworkBtns = Math.min(2 * NoOfNetRows, wifiNetworks.length) ;
+		for (var btnNo = 0; btnNo < noOfWiFiNetworkBtns; btnNo++) {
+			var buttonsHTMLindex = (btnNo >= NoOfNetRows)? 1 : 0;
+			var wifiNetworkName = wifiNetworks[btnNo];
+			var styleStr = (wifiNetworkName.length > MaxNetworkNameLength)? 'style="font-size:0.5em;"  ': '';
+			buttonsHTML[btnNo % 2] += '<div class="wiFiNetBtn" ' + styleStr + 'id="NetWrkBtn' + btnNo + '" onclick="SelWiFiNetwork(\'' + wifiNetworkName + '\')">' + wifiNetworkName + '<\/div>';
+		}
+		document.getElementById('wiFiNetBtnsDivL').innerHTML = buttonsHTML[0];
+		document.getElementById('wiFiNetBtnsDivR').innerHTML = buttonsHTML[1];
+		// Show which network is presently selected
+		selectedWiFiNetwork = connectedWiFiNetwork;
+		UpdWifiNetworkBtns();
+	}
+
+	// The user clicked a WiFi network button
+	function SelWiFiNetwork(clickedWifiNetworkName) {
+		// Save the new network name (or blank if the user clicked Off)
+		selectedWiFiNetwork = clickedWifiNetworkName;
+		// Highlight just the button that was clicked
+		UpdWifiNetworkBtns();
+		// A bit after the user clicked a WiFi network button (so the user can see it), close that screen
+		setTimeout(CloseWiFiNetworkScreen, 1000)
+	}
+
+	// A bit after the user clicked a WiFi network button (so the user can see it), close that screen
+	function CloseWiFiNetworkScreen(clickedWifiNetworkName) {
+		// Close the network screen
+		ShowMenuHideScreen(document.getElementById('wifiNetScreenIcon'));
+		// The user clicked a network name, show the password screen
+		if (selectedWiFiNetwork == '') {
+			ReqWifiConfig();
+		} 
+		// The user clicked "Disconnect"
+		else {
+			ShowScreenHideMenu('wifiPassScreen')
+		}
+	}
+
+	// Highlight the button for the selected network
+	function UpdWifiNetworkBtns() {
+		// No network button
+		document.getElementById('noWiFiNetworkBtn').style.background = (selectedWiFiNetwork == '')? RadioBtnColorOn : RadioBtnColorOff;
+		// Network buttons
+		for (var btnNo = 0; btnNo < noOfWiFiNetworkBtns; btnNo++) {
+			var networkBtn = document.getElementById('NetWrkBtn' + btnNo);
+			networkBtn.style.background = (networkBtn.innerHTML == selectedWiFiNetwork)? RadioBtnColorOn : RadioBtnColorOff;
+		}
+	}
+
+	// Set up remote monitor
+	function SetUpRemoteMonitor() {
+		
+		// Assign actions to the keyboard keys
+		var keyBdKeys = document.getElementsByClassName('keyBoardKey');
+		for (var i = 0; i < keyBdKeys.length; i++) {
+			var keyBdKey = keyBdKeys[i];
+			if (!keyBdKey.onclick) {
+				keyBdKey.onclick = function() {
+					var keyChar = this.innerHTML;
+					if (keyChar.charCodeAt(0) == 9251) { // Space bar
+						keyChar = ' ';
+					}
+					var wiFiPasswordSpan = document.getElementById('wiFiPasswordSpan');
+					wiFiPasswordSpan.innerHTML += keyChar;
+				}
+			}
+		}
+
+		// Dummy image used to see if we have an Internet connection
+		dummyImg.onload = function (){
+			connectedToInternet = true;
+		};
+		dummyImg.onerror = function (){
+			connectedToInternet = false;
+		};
+
+	}
+
+	// The Shift key was pressed
+	function WiFiKeyBdShift(){
+		var lowerCaseKeyboard = document.getElementById('lowerCaseKeyboard');
+		var upperCaseKeyboard = document.getElementById('upperCaseKeyboard');
+		var isUpperCase = (upperCaseKeyboard.style.display != 'none');
+		upperCaseKeyboard.style.display = isUpperCase? 'none' : 'block';
+		lowerCaseKeyboard.style.display = isUpperCase? 'block' : 'none';
+	}
+
+	// The Backspace key was pressed
+	function WiFiKeyBdBackSpc(){
+		var wiFiPasswordSpan = document.getElementById('wiFiPasswordSpan');
+		wiFiPasswordSpan.innerHTML = wiFiPasswordSpan.innerHTML.slice(0, -1);;
+	}
+
+	// Request a list of WiFi networks
+	function ReqWifiList() {
+
+		// Constants
+		var GetSrvc = '/getWiFiList';
+
+		//
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+				// Show the networks
+				ShowWiFiNetworks(xmlhttp.responseText);
+			}
+		}
+		xmlhttp.open("GET", GetSrvc, true);
+		xmlhttp.send();
+	}
+
+
+	// Request setting the WiFi configuration
+	function ReqWifiConfig() {
+
+		// Constants
+		var PostSrvc = '/postWiFiSrvc';
+
+		ShowScreenHideMenu('rebootScreen')
+
+		// Log in
+		// Get the password
+		var wiFiPassword = document.getElementById('wiFiPasswordSpan').innerHTML;
+		// Send the login credentials to the Python script using AJAX
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+				//alert(xmlhttp.status + xmlhttp.statusText + xmlhttp.responseText);
+			}
+		}
+
+		xmlhttp.open("POST", PostSrvc, true);  // No need for an IE hack, because this always runs on the Rapsberry Pi
+		xmlhttp.setRequestHeader(ContentKey, ContentVal);
+		var postData = 'wiFiNet=' + selectedWiFiNetwork;
+		postData += '&wiFiPassword=' + wiFiPassword;
+		xmlhttp.send(postData);
+
+		// Reboot in a bit
+		setTimeout(ReqReboot, 2000)
+	}
+
+
+	// Request control of the Raspberry pi
+	function ReqReboot() {
+		// Constants
+		var GetSrvc = '/getReboot';
+		
+		// Send the login credentials to the Python script using AJAX
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {}
+		xmlhttp.open("GET", GetSrvc, true);
+		xmlhttp.send();
+	}
+
+	// Request control of the Raspberry pi
+	function ReqPiCtrl() {
+
+		// Constants
+		var PostSrvc = '/postControlSrvc';
+
+		// Send the login credentials to the Python script using AJAX
+		var xmlhttp = new XMLHttpRequest();
+		xmlhttp.onreadystatechange = function() {
+			if (xmlhttp.readyState == 4 && xmlhttp.status == 200){
+				//alert(xmlhttp.status + xmlhttp.statusText + xmlhttp.responseText);
+			}
+		}
+		xmlhttp.open("POST", PostSrvc, true);  // No need for an IE hack, because this always runs on the Rapsberry Pi
+		xmlhttp.setRequestHeader(ContentKey, ContentVal);
+		var ctrlDict = {};
+		ctrlDict.remoteEnab = window['remoteEnab'];
+		ctrlDictJson = JSON.stringify(ctrlDict);
+		var postData = 'cd=' + ctrlDictJson;
+		xmlhttp.send(postData);
+	}
+
+
+	// ***********************
+	// Plot
+
+	// Prepare the Plot area
+	function InitPlotArea() {
+
+		var PlotTick0Top = 7;
+		var PlotTick0Left = 0;
+		var PlotTickHeight = 1;
+		var PlotTickWidth = 5;
+		var PlotUnit0Top = 3;
+
+		// Main plot area
+		var plotCanvas = document.getElementById("plotCanvas");
+		var plotCanvasWidth = plotCanvas.offsetWidth;
+		var plotCanvasHeight = plotCanvas.offsetHeight;
+		plotCanvasCtx = plotCanvas.getContext("2d");
+		plotCanvasCtx.fillStyle = 'gray';
+		plotCanvasCtx.fillRect(0,0,plotCanvasWidth,plotCanvasHeight);
+		// Right-most row
+		plotLastRowData = plotCanvasCtx.createImageData(1, plotCanvasHeight);
+		// Units tick mark and values
+		var plotYTickMarkCanvas = document.getElementById("plotYTickMarkCanvas");
+		var plotYTickMarkCanvasCtx = plotYTickMarkCanvas.getContext("2d");
+		plotYTickMarkCanvasCtx.fillStyle = 'black';
+		for (var unitNo = 0; unitNo <= PlotNoOfUnits; unitNo++) {
+			var vertPos = (PlotNoOfUnits - unitNo) * PlotUnitsVertSpacing;
+			plotYTickMarkCanvasCtx.fillRect(PlotTick0Left, PlotTick0Top + vertPos, PlotTickWidth, PlotTickHeight); // Draw a tick mark
+			document.getElementById("plotUnit" + unitNo).style.top = (PlotUnit0Top + vertPos) + 'px'; // Place a unit string vertically
+		}
+		// Parameter buttons color
+		for (var paramBtnNo = 0; paramBtnNo < PlotNoOfParams; paramBtnNo++) {
+			document.getElementById("plotParamBtn" + paramBtnNo).style.color = ColorForPlotParam(paramBtnNo);
+		}
+
+		// Preset the values of the units in the Y-Axis
+		UpdPlotYAxisLabels(PlotParamEnum.BattCurr);
+	}
+
+
+	// Plot the data
+	function PlotData() {
+
+		// Constants
+		var PlotMarkerTime = 60; // How often there is a vertical marker in the plot [s]
+		// Colors
+		var PlotBgColor = [255,255,255]; // Background - white
+		var PlotMarkerColor = [211,211,211]; // Vertical time marker - light gray
+		var plotCanvas = document.getElementById("plotCanvas");
+		var plotCanvasWidth = plotCanvas.offsetWidth;
+		var plotCanvasHeight = plotCanvas.offsetHeight;
+
+		// Scroll the plot right 1 px, clearing the right-most column
+		// Copy everything except the left-most column, and paste it starting at the left end
+		// That leaves the right most column untouched, so we'll have to over-write it with the line canvas data
+		var prevImageData = plotCanvasCtx.getImageData(1, 0, plotCanvasWidth -1, plotCanvasHeight);
+		plotCanvasCtx.putImageData(prevImageData, 0, 0);
+
+		// Clear the line canvas data, with Vertical markers every so often, and 10 horizontal markers
+		plotVertMarkTmr = (plotVertMarkTmr + 1) % PlotMarkerTime; // Advance the vertical marker timer
+		if (plotVertMarkTmr === 0) {
+			PlotVertLine(0, plotCanvasHeight, PlotMarkerColor); // Place a vertical marker
+		} else {
+			// Clear the new column
+			PlotVertLine(0, plotCanvasHeight, PlotBgColor);
+			// horizontal markers
+			for (var unitNo = 1; unitNo <= PlotNoOfUnits -1; unitNo++) {
+				DrawPixel(unitNo * PlotUnitsVertSpacing -1,PlotMarkerColor);
+			}
+		}
+
+		// Plot each parameter
+		// Current
+		prevPackCurrPt = PlotParam(plotCanvasHeight, prevPackCurrPt, battCurr, PlotParamEnum.BattCurr);
+		// Pack voltage
+		prevPackVtgPt = PlotParam(plotCanvasHeight, prevPackVtgPt, packVoltage, PlotParamEnum.BattVtg);
+		// Cell voltages
+		prevMinCellPt = PlotParam(plotCanvasHeight, prevMinCellPt, minCellVtg, PlotParamEnum.CellVtg);
+		prevMaxCellPt = PlotParam(plotCanvasHeight, prevMaxCellPt, maxCellVtg, PlotParamEnum.CellVtg);
+		// Temperatures
+		prevMinTempPt = PlotParam(plotCanvasHeight, prevMinTempPt, minCellTmp, PlotParamEnum.CellTmpr);
+		prevMaxTempPt = PlotParam(plotCanvasHeight, prevMaxTempPt, maxCellTmp, PlotParamEnum.CellTmpr);
+		// SOC
+		prevSOC = PlotParam(plotCanvasHeight, prevSOC, battSoc, PlotParamEnum.SocLevel);
+
+		// Place the column into the right-most column of the plot area
+		plotCanvasCtx.putImageData(plotLastRowData, plotCanvasWidth-3, 0);
+	}
+
+	// Get the color for a plot parameter
+	function ColorForPlotParam(paramNo) {
+		var colorSet = PlotTraceColorSets[paramNo];
+		var hexColor =  "#" + ((1 << 24) + (colorSet[0] << 16) + (colorSet[1] << 8) + colorSet[2]).toString(16).slice(1);
+		return hexColor;
+	}
+
+	// The user changed the labels for the plot
+	function UpdPlotYAxisLabels(paramNo) {
+
+		// Text color
+		var labelColor = ColorForPlotParam(paramNo);
+
+		// Set the min and max values for the selected units
+		var topVal = plotYAxisTopVals[paramNo];
+		var botVal = plotYAxisBotVals[paramNo];
+
+		// Change the labels and color
+		for (var unitNo = 0; unitNo <= PlotNoOfUnits; unitNo++) {
+			var plotLabelDiv = document.getElementById("plotUnit" + unitNo);
+			plotLabelDiv.innerHTML = botVal + unitNo * (topVal - botVal) / 10; // Value
+			plotLabelDiv.style.color = labelColor;
+		}
+
+		// Change the parameters buttons
+		for (var paramBtnNo = 0; paramBtnNo < PlotNoOfParams; paramBtnNo++) {
+			var paramBtn = document.getElementById("plotParamBtn" + paramBtnNo);
+			paramBtn.style.borderStyle = (paramBtnNo == paramNo)? 'inset' : 'outset';
+			paramBtn.style.background = (paramBtnNo == paramNo)? 'White' : 'LightGray';
+		}
+
+	}
+
+	// Draw a single pixel
+	function DrawPixel (y, colorSet) {
+		var index = y * 4;
+		plotLastRowData.data[index++] = colorSet[0]; // Red
+		plotLastRowData.data[index++] = colorSet[1]; // Green
+		plotLastRowData.data[index++] = colorSet[2]; // Blue
+		plotLastRowData.data[index] = 255; // Alpha
+	}
+
+	// Draw a vertical line between two points
+	function PlotVertLine (point1, point2, colorSet) {
+		if (point1 != -1) {
+			var index = Math.min(point1, point2) * 4;
+			var pixelNo;
+			for (var pixelNo = 0; pixelNo <= Math.abs(point1 - point2); pixelNo++) {
+				plotLastRowData.data[index++] = colorSet[0]; // Red
+				plotLastRowData.data[index++] = colorSet[1]; // Green
+				plotLastRowData.data[index++] = colorSet[2]; // Blue
+				plotLastRowData.data[index++] = 255; // Alpha
+			}
+		}
+	}
+
+
+	// Plot the value of a parameter, given the range of the plot for that parameter
+	function PlotParam (plotCanvasHeight, prevPoint, newValue, paramNo) {
+		var topVal = plotYAxisTopVals[paramNo];
+		var botVal = plotYAxisBotVals[paramNo];
+		var colorSet = PlotTraceColorSets[paramNo];
+
+		// Convert the value to the corresponding point within the plot
+		var newPoint = Math.floor((topVal - newValue) / (topVal - botVal) * plotCanvasHeight);
+		// Clamp it within the plot
+		newPoint = Math.max(0,Math.min(plotCanvasHeight-1,newPoint));
+		// Plot a line between the old point and the new point
+		PlotVertLine(prevPoint, newPoint, colorSet);
+		// Return the new point, so we can save it as the old point
+		return newPoint;
+	}
+
+
+
+	// ***********************
+	// Init
+
+	function CheckInternet() {
+		dummyImg.src = 'http://elithion.com/graphics/logo.gif?d=' + escape(Math.random()); // Math.random() overrides possibility of image coming from cache
+	}
+
+	// Handle a tick of the 1 second timer
+	function OneSecTick() {
+		// Plot the data
+		PlotData();
+		// Check if connected to the Internet, and how
+		CheckInternet();
+	}
+
+
+	// Initialize
+	function Init() {
+
+		// Constants
+		var OneSecRate = 1000; // ms
+		var RefreshRate = 333; // ms 333 prevents getting stuck in a pattern when the python script and this file are in synch and continuously miss data
+		var DemoStepTime = 200; // [ms] between increments
+
+		// Get the settings from the cookies
+		SetSettingsFromCookies();
+
+		// Remote Monitor
+		SetUpRemoteMonitor();
+
+		// Prepare the Plot area
+		InitPlotArea();
+
+		// Prepare the Data Log
+		InitDataLog();
+		
+		// Hide the menus, disable overlays
+		document.getElementById('mainMenuBtn').style.display = window['showOverlays']? 'block' : 'none';
+
+		// Functions called at a regular intervals
+		setInterval(function(){OneSecTick();},OneSecRate); // Timer that ticks once / s
+		setInterval(function(){DemoFunction();}, DemoStepTime); // Demo
+		setInterval(function(){ReqBmsData();}, RefreshRate); // Request data from the BMS
+
+	}
+
+	// Initialize
+	Init();
+
+
+
+</script>
+
+</body>
